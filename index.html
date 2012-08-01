@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title>Web Page</title>
+  <script type="text/javascript" src="jquery-1.7.2.min.js"></script>
+  <script type="text/javascript" src="require.js"></script>
+  <script type="text/javascript">
+    $(function() {
+      require(['./lexer/sourcereader', './parser/jsparser'], function(reading, parsing) {
+        var source = "var i;";
+        var reader = reading.create(source);
+        var parser = parsing.create(reader);
+        parser.parse(reader);
+      });
+    });
+  </script>
+  </head>
+  <body>
+  </body>
+</html>

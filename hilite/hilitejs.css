@@ -1,0 +1,27 @@
+span.hjs_block_comment {
+	color: #666;
+}
+
+span.hjs_eol_comment {
+	color: #777;
+}
+
+span.hjs_keyword {
+    font-weight: bold;
+}
+
+span.hjs_punctuation {
+    color: blue;
+}
+
+span.hjs_operator {
+    color: green;
+}
+
+span.hjs_numeric_constant {
+    color: darkorange;
+}
+
+span.hjs_string_constant {
+    color: darkred;
+}

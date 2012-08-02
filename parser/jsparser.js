@@ -15,7 +15,7 @@ define(["../lexer/jslexer"], function(tokenizing) {
 			if (!token.is('keyword', 'var')) return false;
 			if (!this.lexer.readNextToken().is('whitespace')) return false;
 			var token = this.lexer.readNextToken();
-			if (!token.is('identifier')) return false;
+			if (!token.is('Identifier')) return false;
 			console.log(token);
 			//if (!token.is(
 		}

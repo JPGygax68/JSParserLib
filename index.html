@@ -7,7 +7,7 @@
   <script type="text/javascript">
     $(function() {
       require(['./lexer/sourcereader', './parser/jsparser'], function(reading, parsing) {
-        var source = "var i;";
+        var source = "var myVar1;";
         var reader = reading.create(source);
         var parser = parsing.create(reader);
         parser.parse(reader);

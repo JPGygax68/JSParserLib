@@ -1,7 +1,55 @@
 define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
 
     // TODO: comments!
-    
+	
+	function isUnicodeLetter(c) {
+		return (c >= 'A' && c <= 'Z')
+			|| (c >= 'a' && c <= 'z');
+			// TODO: actual support for Unicode!
+	}
+	
+	function isUnicodeDigit(c) {
+		return (c >= '0' && c <= '9');
+	}
+	
+	function isIdentifierStart(c) {
+		return isUnicodeLetter(c)
+			|| (c === '$') || (c === '_');
+	}
+	
+	function isIdentifierPart(c) {
+		return isIdentifierStart(c)
+			//|| isUnicodeCombininingMark(c) // TODO
+			|| isUnicodeDigit(c)
+			//|| isUnicodeConnectorPunctuation(c) // TODO
+			//|| TODO: zero-width non-joiner, zero-width joiner
+			;
+	}
+
+	function isReservedWord(text) {
+        var WORDS = [
+			'function', 'var', 'break', 'return', 'true', 'false', 'while', 'for', 'do', 'break', 'in', 'this',
+			'new', 'try', 'catch', 'throw', 'finally'
+		];
+		return WORDS.indexOf(text) >= 0;
+	}
+	
+	function genericGlobber(reader, start_pred, cont_pred) {
+	
+        var c = reader.peekNextChar();
+		// Check starting predicate, abort if not met
+        if (!c || !start_pred(c)) return false;
+		// Continue while cont_pred is met
+        var text = '';
+        while (true) {
+            text += reader.consumeNextChar();
+            c = reader.peekNextChar();
+            if (!c || !cont_pred(c)) break;
+        }
+        return text;
+	}
+	
+	// TODO: replace according to real grammar
     function globKeyword(reader) {
         
 		// STILL INCOMPLETE!
@@ -20,23 +68,22 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
             if (!c || !CharClasses.isAlnum(c)) break;
         }
         if (KEYWORDS.indexOf(keyword) >= 0) {
+			//console.log('keyword = ' + keyword);
             return keyword;
         }
         else return false;
     }
     
-    function globIdentifier(reader) {
-        var c = reader.peekNextChar();
-        if (!c || !CharClasses.isIdentifierStart(c))
-            return false;
-        var idtf = '';
-        while (true) {
-            idtf += reader.consumeNextChar();
-            c = reader.peekNextChar();
-            if (!c || !CharClasses.isIdentifierPart(c)) break;
-        }
-        return idtf;
+    function globIdentifierName(reader) {
+		return genericGlobber(reader, isIdentifierStart, isIdentifierPart);
     }
+	
+	function globIdentifier(reader) {
+		var text = globIdentifierName(reader);
+		if (text === false) return false;
+		if (isReservedWord(text)) return false;
+		return text;
+	}
     
     function globNumericConstant(reader) {
         var c = reader.peekNextChar();
@@ -147,8 +194,8 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
         var globbers = [
             { token_type: 'eol_comment', globber: globEolComment },
             { token_type: 'block_comment', globber: globBlockComment },
+            { token_type: 'Identifier', globber: globIdentifier },
             { token_type: 'keyword', globber: globKeyword },
-            { token_type: 'identifier', globber: globIdentifier },
             { token_type: 'numeric_constant', globber: globNumericConstant },
             { token_type: 'string_constant', globber: globStringConstant },
             { token_type: 'punctuation', globber: globPunctuation },

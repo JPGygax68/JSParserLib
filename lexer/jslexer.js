@@ -4,13 +4,13 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
 	
 	// Tokenizer building blocks
 	
-	function singleChar(reader, pred) {
+	function _singleChar(reader, pred) {
 		var c = reader.peekNextChar();
 		if (pred(c)) { reader.consumeNextChar(); return c; }
 		return false;
 	}
 	
-	function anyOf(reader, terms) {
+	function _anyOf(reader, terms) {
 		for (var i = 0; i < terms.length; i ++) {
 			var term = terms[i];
 			var text = term(reader);
@@ -18,7 +18,7 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
 		}
 		return false;
 	}
-
+    
     /** This implements a 0..n times repetition.
      */
 	function repetition(reader, term) {
@@ -44,36 +44,40 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
 		return text;
 	}
 	
+    // Term factories
+    
+    function singleChar(pred) {
+        return function(reader) { return _singleChar(reader, pred); }
+    }
+    
+    function anyOf(terms) {
+        return function(reader) { return _anyOf(reader, terms); }
+    }
+
 	// Vocabulary 
 	
-	function unicodeLetter(reader) {
-		return singleChar(reader, function(c) {
-			return (c >= 'A' && c <= 'Z') 
-				|| (c >= 'a' && c <= 'z')
-			// TODO: actual support for Unicode!
-		});
-	}
+	var unicodeLetter = singleChar( function(c) {
+        return (c >= 'A' && c <= 'Z') 
+            || (c >= 'a' && c <= 'z')
+        // TODO: actual support for Unicode!
+    });
 	
-	function unicodeDigit(reader) {
-		return singleChar(reader, function(c) { return (c >= '0' && c <= '9'); });
-	}
+	var unicodeDigit = singleChar( function(c) {
+		return (c >= '0' && c <= '9');
+	});
 	
-	function identifierStart(reader) {
-		return anyOf(reader, [
-			unicodeLetter,
-			function(reader) { return singleChar(reader, function(c) { return (c === '$') || (c === '_'); }) }
-		]);
-	}
+	var identifierStart = anyOf( [
+        unicodeLetter,
+        singleChar( function(c) { return (c === '$') || (c === '_'); })
+    ]);
 	
-	function identifierPart(reader) {
-		return anyOf(reader, [
-			identifierStart,
-			//|| unicodeCombininingMark(c) // TODO
-			unicodeDigit
-			//|| unicodeConnectorPunctuation(c) // TODO
-			//|| TODO: zero-width non-joiner, zero-width joiner
-		]);
-	}
+	var identifierPart = anyOf( [
+        identifierStart,
+        //|| unicodeCombininingMark(c) // TODO
+        unicodeDigit
+        //|| unicodeConnectorPunctuation(c) // TODO
+        //|| TODO: zero-width non-joiner, zero-width joiner
+    ]);
 
 	function isReservedWord(text) {
         var WORDS = [

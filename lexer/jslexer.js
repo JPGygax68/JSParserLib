@@ -19,19 +19,19 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
 		return false;
 	}
     
-    /** This implements a 0..n times repetition.
+    /** This implements a 0..n times _repetition.
      */
-	function repetition(reader, term) {
+	function _repetition(reader, term) {
 		var text = '';
 		while (true) {
 			var part = term(reader);
 			if (part === false) return text;
 			text += part;
 		}
-        alert('repetition(): must not arrive at end!');
+        alert('_repetition(): must not arrive at end!');
 	}
 	
-	function sequence(reader, terms) {
+	function _sequence(reader, terms) {
 		reader.savePos();
 		var text = '';
 		for (var i = 0; i < terms.length; i ++) {
@@ -52,6 +52,14 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
     
     function anyOf(terms) {
         return function(reader) { return _anyOf(reader, terms); }
+    }
+
+    function sequence(terms) {
+        return function(reader) { return _sequence(reader, terms); }
+    }
+
+    function repetition(term) {
+        return function(reader) { return _repetition(reader, term); }
     }
 
 	// Vocabulary 
@@ -79,6 +87,11 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
         //|| TODO: zero-width non-joiner, zero-width joiner
     ]);
 
+    var identifierName = sequence( [
+        identifierStart,
+        repetition(identifierPart)
+    ]);
+	
 	function isReservedWord(text) {
         var WORDS = [
 			'function', 'var', 'break', 'return', 'true', 'false', 'while', 'for', 'do', 'break', 'in', 'this',
@@ -127,15 +140,8 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
         else return false;
     }
     
-    function globIdentifierName(reader) {
-		return sequence(reader, [
-			identifierStart,
-			function(reader) { return repetition(reader, identifierPart); }			
-		]);
-    }
-	
 	function globIdentifier(reader) {
-		var text = globIdentifierName(reader);
+		var text = identifierName(reader);
 		if (text === false) return false;
 		if (isReservedWord(text)) return false;
 		return text;

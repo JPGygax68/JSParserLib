@@ -13,6 +13,8 @@ define( function() {
 		return this.type == type && (text === undefined || this.text === text);
 	}
 	
+	//--- Tokenizer building blocks -------------------------------------------
+	
 	//--- Lexer class ---------------------------------------------------------
 	
 	function Lexer(reader, globbers /*, parser_fun, parser_obj*/) {

@@ -2,28 +2,77 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
 
     // TODO: comments!
 	
-	function isUnicodeLetter(c) {
-		return (c >= 'A' && c <= 'Z')
-			|| (c >= 'a' && c <= 'z');
+	// Tokenizer building blocks
+	
+	function singleChar(reader, pred) {
+		var c = reader.peekNextChar();
+		if (pred(c)) { reader.consumeNextChar(); return c; }
+		return false;
+	}
+	
+	function anyOf(reader, terms) {
+		for (var i = 0; i < terms.length; i ++) {
+			var term = terms[i];
+			var text = term(reader);
+			if (text !== false) return text;
+		}
+		return false;
+	}
+
+    /** This implements a 0..n times repetition.
+     */
+	function repetition(reader, term) {
+		var text = '';
+		while (true) {
+			var part = term(reader);
+			if (part === false) return text;
+			text += part;
+		}
+        alert('repetition(): must not arrive at end!');
+	}
+	
+	function sequence(reader, terms) {
+		reader.savePos();
+		var text = '';
+		for (var i = 0; i < terms.length; i ++) {
+			var term = terms[i];
+			var part = term(reader);
+			if (part === false) { reader.restorePos(); return false; }
+			text += part;
+		}
+		reader.dropLastMark();
+		return text;
+	}
+	
+	// Vocabulary 
+	
+	function unicodeLetter(reader) {
+		return singleChar(reader, function(c) {
+			return (c >= 'A' && c <= 'Z') 
+				|| (c >= 'a' && c <= 'z')
 			// TODO: actual support for Unicode!
+		});
 	}
 	
-	function isUnicodeDigit(c) {
-		return (c >= '0' && c <= '9');
+	function unicodeDigit(reader) {
+		return singleChar(reader, function(c) { return (c >= '0' && c <= '9'); });
 	}
 	
-	function isIdentifierStart(c) {
-		return isUnicodeLetter(c)
-			|| (c === '$') || (c === '_');
+	function identifierStart(reader) {
+		return anyOf(reader, [
+			unicodeLetter,
+			function(reader) { return singleChar(reader, function(c) { return (c === '$') || (c === '_'); }) }
+		]);
 	}
 	
-	function isIdentifierPart(c) {
-		return isIdentifierStart(c)
-			//|| isUnicodeCombininingMark(c) // TODO
-			|| isUnicodeDigit(c)
-			//|| isUnicodeConnectorPunctuation(c) // TODO
+	function identifierPart(reader) {
+		return anyOf(reader, [
+			identifierStart,
+			//|| unicodeCombininingMark(c) // TODO
+			unicodeDigit
+			//|| unicodeConnectorPunctuation(c) // TODO
 			//|| TODO: zero-width non-joiner, zero-width joiner
-			;
+		]);
 	}
 
 	function isReservedWord(text) {
@@ -75,7 +124,10 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
     }
     
     function globIdentifierName(reader) {
-		return genericGlobber(reader, isIdentifierStart, isIdentifierPart);
+		return sequence(reader, [
+			identifierStart,
+			function(reader) { return repetition(reader, identifierPart); }			
+		]);
     }
 	
 	function globIdentifier(reader) {

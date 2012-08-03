@@ -7,6 +7,7 @@ define( function() {
 	function Token(type, text) {
 		this.type = type;
 		this.text = text;
+        console.log(type + ': ' + text);
 	}
 	
 	Token.prototype.is = function(type, text) {
@@ -22,7 +23,7 @@ define( function() {
 		if (pred(c)) { reader.consumeNextChar(); return c; }
 		return false;
 	}
-	
+    
 	function _anyOf(reader, terms) {
 		for (var i = 0; i < terms.length; i ++) {
 			var term = terms[i];
@@ -57,6 +58,13 @@ define( function() {
 		return text;
 	}
 	
+    function _filter(reader, term, pred) {
+        reader.savePos();
+        var text = term(reader);
+        if (text === false || !pred(text)) { reader.restorePos(); return false; }
+        else { reader.dropLastMark(); return text; }
+    }
+    
 	//--- Lexer class ---------------------------------------------------------
 	
 	function Lexer(reader, globbers /*, parser_fun, parser_obj*/) {
@@ -127,6 +135,9 @@ define( function() {
         },
         repetition: function(term) {
             return function(reader) { return _repetition(reader, term); }
+        },
+        filter: function(term, pred) {
+            return function(reader) { return _filter(reader, term, pred); }
         }
 	}
 });

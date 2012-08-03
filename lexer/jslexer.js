@@ -1,85 +1,23 @@
 define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
 
-    // TODO: comments!
-	
-	// Tokenizer building blocks
-	
-	function _singleChar(reader, pred) {
-		var c = reader.peekNextChar();
-		if (pred(c)) { reader.consumeNextChar(); return c; }
-		return false;
-	}
-	
-	function _anyOf(reader, terms) {
-		for (var i = 0; i < terms.length; i ++) {
-			var term = terms[i];
-			var text = term(reader);
-			if (text !== false) return text;
-		}
-		return false;
-	}
-    
-    /** This implements a 0..n times _repetition.
-     */
-	function _repetition(reader, term) {
-		var text = '';
-		while (true) {
-			var part = term(reader);
-			if (part === false) return text;
-			text += part;
-		}
-        alert('_repetition(): must not arrive at end!');
-	}
-	
-	function _sequence(reader, terms) {
-		reader.savePos();
-		var text = '';
-		for (var i = 0; i < terms.length; i ++) {
-			var term = terms[i];
-			var part = term(reader);
-			if (part === false) { reader.restorePos(); return false; }
-			text += part;
-		}
-		reader.dropLastMark();
-		return text;
-	}
-	
-    // Term factories
-    
-    function singleChar(pred) {
-        return function(reader) { return _singleChar(reader, pred); }
-    }
-    
-    function anyOf(terms) {
-        return function(reader) { return _anyOf(reader, terms); }
-    }
-
-    function sequence(terms) {
-        return function(reader) { return _sequence(reader, terms); }
-    }
-
-    function repetition(term) {
-        return function(reader) { return _repetition(reader, term); }
-    }
-
 	// Vocabulary 
 	
-	var unicodeLetter = singleChar( function(c) {
+	var unicodeLetter = Lexer.singleChar( function(c) {
         return (c >= 'A' && c <= 'Z') 
             || (c >= 'a' && c <= 'z')
         // TODO: actual support for Unicode!
     });
 	
-	var unicodeDigit = singleChar( function(c) {
+	var unicodeDigit = Lexer.singleChar( function(c) {
 		return (c >= '0' && c <= '9');
 	});
 	
-	var identifierStart = anyOf( [
+	var identifierStart = Lexer.anyOf( [
         unicodeLetter,
-        singleChar( function(c) { return (c === '$') || (c === '_'); })
+        Lexer.singleChar( function(c) { return (c === '$') || (c === '_'); })
     ]);
 	
-	var identifierPart = anyOf( [
+	var identifierPart = Lexer.anyOf( [
         identifierStart,
         //|| unicodeCombininingMark(c) // TODO
         unicodeDigit
@@ -87,9 +25,9 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
         //|| TODO: zero-width non-joiner, zero-width joiner
     ]);
 
-    var identifierName = sequence( [
+    var identifierName = Lexer.sequence( [
         identifierStart,
-        repetition(identifierPart)
+        Lexer.repetition(identifierPart)
     ]);
 	
 	function isReservedWord(text) {

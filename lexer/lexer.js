@@ -15,6 +15,48 @@ define( function() {
 	
 	//--- Tokenizer building blocks -------------------------------------------
 	
+	// Tokenizer building blocks
+	
+	function _singleChar(reader, pred) {
+		var c = reader.peekNextChar();
+		if (pred(c)) { reader.consumeNextChar(); return c; }
+		return false;
+	}
+	
+	function _anyOf(reader, terms) {
+		for (var i = 0; i < terms.length; i ++) {
+			var term = terms[i];
+			var text = term(reader);
+			if (text !== false) return text;
+		}
+		return false;
+	}
+    
+    /** This implements a 0..n times _repetition.
+     */
+	function _repetition(reader, term) {
+		var text = '';
+		while (true) {
+			var part = term(reader);
+			if (part === false) return text;
+			text += part;
+		}
+        alert('_repetition(): must not arrive at end!');
+	}
+	
+	function _sequence(reader, terms) {
+		reader.savePos();
+		var text = '';
+		for (var i = 0; i < terms.length; i ++) {
+			var term = terms[i];
+			var part = term(reader);
+			if (part === false) { reader.restorePos(); return false; }
+			text += part;
+		}
+		reader.dropLastMark();
+		return text;
+	}
+	
 	//--- Lexer class ---------------------------------------------------------
 	
 	function Lexer(reader, globbers /*, parser_fun, parser_obj*/) {
@@ -70,6 +112,21 @@ define( function() {
 	return {
 		/** Creates a Lexer object. */
 		create: function(reader, globbers /*, parser_fun, parser_obj*/) { 
-			return new Lexer(reader, globbers /*, parser_fun, parser_obj*/); }
+			return new Lexer(reader, globbers /*, parser_fun, parser_obj*/); 
+        },
+            
+        // Term factories
+        singleChar: function(pred) {
+            return function(reader) { return _singleChar(reader, pred); }
+        },
+        anyOf: function(terms) {
+            return function(reader) { return _anyOf(reader, terms); }
+        },
+        sequence: function(terms) {
+            return function(reader) { return _sequence(reader, terms); }
+        },
+        repetition: function(term) {
+            return function(reader) { return _repetition(reader, term); }
+        }
 	}
 });

@@ -11,12 +11,10 @@ define(["../lexer/jslexer"], function(tokenizing) {
 		var ok = false;
 		this.reader.savePos();
 		try {
-			var token = this.lexer.readNextToken();
-			if (!token.is('keyword', 'var')) return false;
-			if (!this.lexer.readNextToken().is('whitespace')) return false;
-			var token = this.lexer.readNextToken();
-			if (!token.is('Identifier')) return false;
-			//if (!token.is(
+			var token;
+			while ((token = this.lexer.readNextToken()) !== false) {
+                //console.log(token.type + ' ' + token.text);
+            }
 		}
 		finally {
 			if (ok) this.reader.dropLastMark(); else this.reader.restorePos();

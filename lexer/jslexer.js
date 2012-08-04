@@ -5,6 +5,10 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
         'new', 'try', 'catch', 'throw', 'finally'
     ];
 
+    var PUNCTUATORS = ("{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % "
+                     + "++ -- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= "
+                     + "<<= >>= >>>= &= |= ^=").split(' ');
+                     
 	// Vocabulary 
 	
 	var unicodeLetter = Lexer.singleChar( function(c) {
@@ -41,6 +45,14 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
     
     var identifier = Lexer.filter(identifierName, function(text) {
         return KEYWORDS.indexOf(text) < 0;
+    });
+    
+    var punctuator = Lexer.greedy( function(c) {
+        //console.log('punctuator char pred');
+        return "{}[]().;,<>=!+-*%&|^~?:".indexOf(c) >= 0;
+    }, function(text) {
+        //console.log('punctuator elem pred');
+        return PUNCTUATORS.indexOf(text) >= 0;
     });
     
     function globNumericConstant(reader) {
@@ -81,14 +93,6 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
             }
         }
         return s;
-    }
-    
-    function globPunctuation(reader) {
-        var c = reader.peekNextChar();
-        if (!c || '[]{}();,'.indexOf(c) < 0)
-            return false;
-        reader.consumeNextChar();
-        return c;
     }
     
     function globOperator(reader) {
@@ -152,11 +156,11 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
         var globbers = [
             { token_type: 'eol_comment', globber: globEolComment },
             { token_type: 'block_comment', globber: globBlockComment },
-            { token_type: 'Identifier', globber: identifier },
+            { token_type: 'identifier', globber: identifier },
             { token_type: 'keyword', globber: keyword },
             { token_type: 'numeric_constant', globber: globNumericConstant },
             { token_type: 'string_constant', globber: globStringConstant },
-            { token_type: 'punctuation', globber: globPunctuation },
+            { token_type: 'punctuator', globber: punctuator },
             { token_type: 'operator', globber: globOperator },
             { token_type: 'whitespace', globber: globWhitespace },
         ];

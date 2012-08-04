@@ -14,15 +14,29 @@ define( function() {
 		return this.type == type && (text === undefined || this.text === text);
 	}
 	
-	//--- Tokenizer building blocks -------------------------------------------
-	
-	// Tokenizer building blocks
+	//--- Lexer building blocks -----------------------------------------------
 	
 	function _singleChar(reader, pred) {
 		var c = reader.peekNextChar();
 		if (pred(c)) { reader.consumeNextChar(); return c; }
 		return false;
 	}
+    
+    /** Consume conforming characters greedily as long as the element conforms.
+     */
+    function _greedy(reader, char_pred, elem_pred) {
+        reader.savePos();
+        var text = '';
+        console.log('_greedy: c = ' + reader.peekNextChar());
+        while (char_pred(reader.peekNextChar())) {
+            var text2 = text + reader.peekNextChar();
+            if (!elem_pred(text2)) break;
+            reader.consumeNextChar();
+            text = text2;
+        }
+        reader.dropLastMark();
+        return text;
+    }
     
 	function _anyOf(reader, terms) {
 		for (var i = 0; i < terms.length; i ++) {
@@ -138,6 +152,9 @@ define( function() {
         },
         filter: function(term, pred) {
             return function(reader) { return _filter(reader, term, pred); }
+        },
+        greedy: function(char_pred, elem_pred) {
+            return function(reader) { return _greedy(reader, char_pred, elem_pred); }
         }
 	}
 });

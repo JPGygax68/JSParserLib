@@ -1,17 +1,14 @@
 <!DOCTYPE html>
 <html>
   <head>
-  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Pragma" content="no-store">
   <title>Web Page</title>
   <script type="text/javascript" src="jquery-1.7.2.min.js"></script>
   <script type="text/javascript" src="require.js"></script>
   <script type="text/javascript">
     $(function() {
-      require.config({
-          urlArgs: "bust=v4"
-      });
       require(['./lexer/sourcereader', './parser/jsparser'], function(reading, parsing) {
-        var source = "var myVar1;";
+        var source = "var myVar4 = 27;";
         var reader = reading.create(source);
         var parser = parsing.create(reader);
         parser.parse(reader);

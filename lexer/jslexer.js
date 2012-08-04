@@ -62,6 +62,16 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
         return PUNCTUATORS.indexOf(text) >= 0;
     });
     
+    var decimalIntegerLiteral = Lexer.anyOf([
+        Lexer.singleChar( function(c) { return c === '0'; } ),
+        Lexer.sequence([
+            Lexer.singleChar( function(c) { return "12345789".indexOf(c) >= 0; } ),
+            Lexer.repetition( 
+                Lexer.singleChar( function(c) { return "0123456789".indexOf(c) >= 0; } )
+            )
+        ])
+    ]);
+    
     function globNumericConstant(reader) {
         var c = reader.peekNextChar();
         if (!c || '0123456789'.indexOf(c) < 0)
@@ -165,7 +175,7 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
             { token_type: 'block_comment', globber: globBlockComment },
             { token_type: 'identifier', globber: identifier },
             { token_type: 'keyword', globber: keyword },
-            { token_type: 'numeric_constant', globber: globNumericConstant },
+            { token_type: 'decimalIntegerLiteral', globber: decimalIntegerLiteral },
             { token_type: 'string_constant', globber: globStringConstant },
             { token_type: 'punctuator', globber: punctuator },
             { token_type: 'operator', globber: globOperator },

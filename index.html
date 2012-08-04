@@ -14,7 +14,7 @@
         urlArgs: "bust=" +  (new Date()).getTime()
       } );
       require(['./lexer/sourcereader', './parser/jsparser'], function(reading, parsing) {
-        var source = "var myVar4 = 27.51;";
+        var source = "var myVar4 = 27E-3;";
         var reader = reading.create(source);
         var parser = parsing.create(reader);
         parser.parse(reader);

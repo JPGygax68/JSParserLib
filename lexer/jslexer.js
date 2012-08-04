@@ -71,10 +71,21 @@ define(["./lexer"], function(L) {
         ])
     ]);
     
+    var signedInteger = L.anyOf([
+        L.sequence( [L.singleChar("+-"), decimalDigits] ),
+        decimalDigits
+    ]);
+    
+    var exponentPart = L.sequence([
+        L.singleChar('eE'), signedInteger
+    ]);
+    
     var decimalLiteral = L.anyOf([
         L.sequence([
-            decimalIntegerLiteral, L.singleChar('0'), L.optional(decimalDigits)
-        ])
+            decimalIntegerLiteral, L.singleChar('.'), L.optional(decimalDigits), L.optional(exponentPart)
+        ]),
+        L.sequence( [L.singleChar('.'), decimalDigits, L.optional(exponentPart)] ),
+        L.sequence( [decimalIntegerLiteral, L.optional(exponentPart)] )
     ]);
     
     function globNumericConstant(reader) {
@@ -180,7 +191,7 @@ define(["./lexer"], function(L) {
             { token_type: 'block_comment', globber: globBlockComment },
             { token_type: 'identifier', globber: identifier },
             { token_type: 'keyword', globber: keyword },
-            { token_type: 'decimalIntegerLiteral', globber: decimalIntegerLiteral },
+            { token_type: 'decimalLiteral', globber: decimalLiteral },
             { token_type: 'string_constant', globber: globStringConstant },
             { token_type: 'punctuator', globber: punctuator },
             { token_type: 'operator', globber: globOperator },

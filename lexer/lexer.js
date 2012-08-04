@@ -148,10 +148,12 @@ define( function() {
         singleChar: function(pred) {
             if (typeof pred === 'string') {
                 var s = pred;
-                if (pred.length === 1) 
+                if (pred.length === 1) {
                     pred = function(c) { return c === s; };
-                else
+                }
+                else {
                     pred = function(c) { return s.indexOf(c) >= 0; }
+                }
             }
             return function(reader) { return _singleChar(reader, pred); }
         },

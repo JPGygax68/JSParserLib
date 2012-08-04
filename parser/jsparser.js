@@ -12,7 +12,7 @@ define(["../lexer/jslexer"], function(tokenizing) {
 		this.reader.savePos();
 		try {
 			var token;
-			while ((token = this.lexer.readNextToken()) !== false) {
+			while ((token = this.lexer.readNextElement()) !== false) {
                 //console.log(token.type + ' ' + token.text);
             }
 		}

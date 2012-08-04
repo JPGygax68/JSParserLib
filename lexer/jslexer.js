@@ -1,4 +1,4 @@
-define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
+define(["./lexer"], function(L) {
 
     var KEYWORDS = [
         'function', 'var', 'break', 'return', 'true', 'false', 'while', 'for', 'do', 'break', 'in', 'this',
@@ -18,22 +18,22 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
                      
 	// Vocabulary 
 	
-	var unicodeLetter = Lexer.singleChar( function(c) {
+	var unicodeLetter = L.singleChar( function(c) {
         return (c >= 'A' && c <= 'Z') 
             || (c >= 'a' && c <= 'z');
         // TODO: actual support for Unicode!
     });
 	
-	var unicodeDigit = Lexer.singleChar( function(c) {
+	var unicodeDigit = L.singleChar( function(c) {
 		return (c >= '0' && c <= '9');
 	});
 	
-	var identifierStart = Lexer.anyOf( [
+	var identifierStart = L.anyOf( [
         unicodeLetter,
-        Lexer.singleChar( function(c) { return (c === '$') || (c === '_'); })
+        L.singleChar( function(c) { return (c === '$') || (c === '_'); })
     ]);
 	
-	var identifierPart = Lexer.anyOf( [
+	var identifierPart = L.anyOf( [
         identifierStart,
         //|| unicodeCombininingMark(c) // TODO
         unicodeDigit
@@ -41,34 +41,39 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
         //|| TODO: zero-width non-joiner, zero-width joiner
     ]);
 
-    var identifierName = Lexer.sequence( [
+    var identifierName = L.sequence( [
         identifierStart,
-        Lexer.repetition(identifierPart)
+        L.repetition(identifierPart)
     ]);
 	
-    var keyword = Lexer.filter(identifierName, function(text) {
+    var keyword = L.filter(identifierName, function(text) {
         return (KEYWORDS.indexOf(text) >= 0);
     });
     
-    var identifier = Lexer.filter(identifierName, function(text) {
+    var identifier = L.filter(identifierName, function(text) {
         return KEYWORDS.indexOf(text) < 0;
     });
     
-    var punctuator = Lexer.greedy( function(c) {
-        //console.log('punctuator char pred');
-        return PUNCT_CHARS.indexOf(c) >= 0;
-    }, function(text) {
-        //console.log('punctuator elem pred');
-        return PUNCTUATORS.indexOf(text) >= 0;
-    });
+    var punctuator = L.greedy( 
+        function(c) { return PUNCT_CHARS.indexOf(c) >= 0; }, 
+        function(text) { return PUNCTUATORS.indexOf(text) >= 0; }
+    );
     
-    var decimalIntegerLiteral = Lexer.anyOf([
-        Lexer.singleChar( function(c) { return c === '0'; } ),
-        Lexer.sequence([
-            Lexer.singleChar( function(c) { return "12345789".indexOf(c) >= 0; } ),
-            Lexer.repetition( 
-                Lexer.singleChar( function(c) { return "0123456789".indexOf(c) >= 0; } )
-            )
+    var decimalDigits = L.repetition(
+        L.singleChar("0123456789")
+    );
+    
+    var decimalIntegerLiteral = L.anyOf([
+        L.singleChar('0'),
+        L.sequence([
+            L.singleChar("12345789"),
+            decimalDigits
+        ])
+    ]);
+    
+    var decimalLiteral = L.anyOf([
+        L.sequence([
+            decimalIntegerLiteral, L.singleChar('0'), L.optional(decimalDigits)
         ])
     ]);
     
@@ -181,7 +186,7 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
             { token_type: 'operator', globber: globOperator },
             { token_type: 'whitespace', globber: globWhitespace },
         ];
-        var lexer = Lexer.create(reader, globbers); // parser_fun, parser_obj);
+        var lexer = L.create(reader, globbers); // parser_fun, parser_obj);
         return lexer;
     }
     

@@ -27,7 +27,7 @@ define( function() {
     function _greedy(reader, char_pred, elem_pred) {
         reader.savePos();
         var text = '';
-        console.log('_greedy: c = ' + reader.peekNextChar());
+        //console.log('_greedy: c = ' + reader.peekNextChar());
         while (char_pred(reader.peekNextChar())) {
             var text2 = text + reader.peekNextChar();
             if (!elem_pred(text2)) break;
@@ -59,6 +59,12 @@ define( function() {
         alert('_repetition(): must not arrive at end!');
 	}
 	
+    function _optional(reader, term) {
+        var part = term(reader);
+        if (part === false) return "";
+        else return part;
+    }
+    
 	function _sequence(reader, terms) {
 		reader.savePos();
 		var text = '';
@@ -93,7 +99,7 @@ define( function() {
 	 *  Returns a token object (composed of token_type and text) if one of
 	 *  the globbers successfully recognized a token; false otherwise.
 	 */
-	Lexer.prototype.readNextToken = function() {
+	Lexer.prototype.readNextElement = function() {
 		for (var i = 0; i < this.globbers.length; i ++) {
 			this.reader.savePos();
 			var globber = this.globbers[i].globber;
@@ -137,8 +143,16 @@ define( function() {
 			return new Lexer(reader, globbers /*, parser_fun, parser_obj*/); 
         },
             
-        // Term factories
+        //--- Term factories --------------------------------------------------
+        
         singleChar: function(pred) {
+            if (typeof pred === 'string') {
+                var s = pred;
+                if (pred.length === 1) 
+                    pred = function(c) { return c === s; };
+                else
+                    pred = function(c) { return s.indexOf(c) >= 0; }
+            }
             return function(reader) { return _singleChar(reader, pred); }
         },
         anyOf: function(terms) {
@@ -149,6 +163,9 @@ define( function() {
         },
         repetition: function(term) {
             return function(reader) { return _repetition(reader, term); }
+        },
+        optional: function(term) {
+            return function(reader) { return _optional(reader, term); }
         },
         filter: function(term, pred) {
             return function(reader) { return _filter(reader, term, pred); }

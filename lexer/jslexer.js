@@ -8,12 +8,19 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
     var PUNCTUATORS = ("{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % "
                      + "++ -- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= "
                      + "<<= >>= >>>= &= |= ^=").split(' ');
+    var PUNCT_CHARS = (function() { 
+        var s = '', c, i, j;
+        for (i = 0; i < PUNCTUATORS.length; i++)
+            for (j = 0; j < PUNCTUATORS[i].length; j++)
+                if (s.indexOf((c = PUNCTUATORS[i][j])) < 0) s += c;
+        return s;
+    })();
                      
 	// Vocabulary 
 	
 	var unicodeLetter = Lexer.singleChar( function(c) {
         return (c >= 'A' && c <= 'Z') 
-            || (c >= 'a' && c <= 'z')
+            || (c >= 'a' && c <= 'z');
         // TODO: actual support for Unicode!
     });
 	
@@ -49,7 +56,7 @@ define(["./lexer", "./charclasses"], function(Lexer, CharClasses) {
     
     var punctuator = Lexer.greedy( function(c) {
         //console.log('punctuator char pred');
-        return "{}[]().;,<>=!+-*%&|^~?:".indexOf(c) >= 0;
+        return PUNCT_CHARS.indexOf(c) >= 0;
     }, function(text) {
         //console.log('punctuator elem pred');
         return PUNCTUATORS.indexOf(text) >= 0;

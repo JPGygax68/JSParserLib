@@ -8,13 +8,25 @@
   <title>Web Page</title>
   <script type="text/javascript" src="jquery-1.7.2.min.js"></script>
   <script type="text/javascript" src="require.js"></script>
+  <script type="text/javascript" id="js_source">
+    var myFunc = function() {
+      /* This is my
+       * multiline
+       * comment.
+       */
+      var obj = null;
+    }
+  </script>
   <script type="text/javascript">
     $(function() {
       require.config( {
         urlArgs: "bust=" +  (new Date()).getTime()
+        //urlArgs: "bust=2"
       } );
       require(['./lexer/sourcereader', './parser/jsparser'], function(reading, parsing) {
-        var source = "var myVar4 = 0x8001;";
+        //var source = "var myVar4 = 0x8001;";
+        var source = $('#js_source').text();
+        console.log(source);
         var reader = reading.create(source);
         var parser = parsing.create(reader);
         parser.parse(reader);

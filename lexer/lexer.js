@@ -7,7 +7,7 @@ define( function() {
 	function Token(type, text) {
 		this.type = type;
 		this.text = text;
-        console.log(type + ': ' + text);
+        console.log(type + ': ' + text.trim());
 	}
 	
 	Token.prototype.is = function(type, text) {
@@ -57,7 +57,7 @@ define( function() {
             reader.savePos();
             var text = term(reader);
             if (text !== false) {
-                if (!result || text.length > result.length) {
+                if ((!result) || (text.length > result.length)) {
                     result = text;
                     end_pos = reader.getCurrentPos();
                 }
@@ -71,6 +71,23 @@ define( function() {
         return false;
     }
 
+    /** Rejects the element if it can be parsed as the first term but also as the
+     *  second one.
+     */
+    function _butNot(reader, term, neg_term) {
+        reader.savePos();
+        var res = term(reader);
+        var end_pos = reader.getCurrentPos();
+        reader.restorePos();
+        if (res === false) return false;
+        reader.savePos();
+        var res2 = neg_term(reader);
+        reader.restorePos();
+        if (res2 !== false && res2 === res) return false;
+        reader.goToPos(end_pos);
+        return res;
+    }
+    
     /** This implements a 0..n times _repetition.
      */
 	function _repetition(reader, term) {
@@ -106,7 +123,8 @@ define( function() {
         reader.savePos();
         var text = term(reader);
         if (text === false || !pred(text)) { reader.restorePos(); return false; }
-        else { reader.dropLastMark(); return text; }
+        reader.dropLastMark(); 
+        return text;
     }
     
 	//--- Lexer class ---------------------------------------------------------
@@ -134,31 +152,48 @@ define( function() {
 		}
 		return false;
 	}
-	
-	/**	- Uses the "globber" functions to parse tokens from the character
-	 *    stream obtained through the Reader.
-	 *  - Calls the parser_fun callback function (setting "this" to the
-	 *    specified parser object) when a token was recognized.
-	 */
-	/*
-	Lexer.prototype.getNextToken = function() {
-		console.log('WARNING: deprecated method Lexer.getNextToken() called');
-		for (var i = 0; i < this.globbers.length; i ++) {
-			this.reader.savePos();
-			var globber = this.globbers[i].globber;
-			var token_type = this.globbers[i].token_type;
-			var token = globber(this.reader);
-			if (token) {
-				this.reader.dropLastMark();
-				this.parser_fun.call(this.parser_obj, token_type, token, this.reader);
-				return true;
-			}
-			this.reader.restorePos();
-		}
-		return false;
-	}
-	*/
-	
+
+    //--- Helper functions ----------------------------------------------------
+
+    function invertPred(pred) {
+        return function(s) { return ! pred(s); }
+    }
+    
+    function singleCharPredicate(pred, invert) {
+        var real_pred;
+        if (typeof pred === 'string') {
+            var s = pred;
+            if (pred.length === 1) {
+                real_pred = function(c) { return c === s; };
+            }
+            else {
+                real_pred = function(c) { return s.indexOf(c) >= 0; }
+            }
+        }
+        else {
+            real_pred = pred;
+        }
+        return invert ? invertedPred(real_pred) : real_pred;
+    }
+
+    function stringPredicate(pred, invert) {
+        var real_pred;
+        if (typeof pred === 'string') {
+            real_pred = function(text) { return text === pred; };
+        }
+        else if (pred instanceof Array) {
+            var a = pred;
+            for (var i = 0; i < a.length; i ++) a[i] = stringPredicate(a[i]);
+            real_pred = function(s) {
+                for (var i = 0; i < a.length; i ++) if (a[i](s) !== true) return false;
+                return true; }
+        }
+        else {
+            real_pred = pred;
+        }
+        return (invert ? invertedPred(real_pred) : real_pred);
+    }
+
 	//--- PUBLIC API ----------------------------------------------------------
 	
 	return {
@@ -170,19 +205,14 @@ define( function() {
         //--- Term factories --------------------------------------------------
         
         singleChar: function(pred) {
-            if (typeof pred === 'string') {
-                var s = pred;
-                if (pred.length === 1) {
-                    pred = function(c) { return c === s; };
-                }
-                else {
-                    pred = function(c) { return s.indexOf(c) >= 0; }
-                }
-            }
+            pred = singleCharPredicate(pred);
             return function(reader) { return _singleChar(reader, pred); }
         },
         anyOf: function(terms) {
             return function(reader) { return _anyOf(reader, terms); }
+        },
+        butNot: function(term, neg_term) {
+            return function(reader) { return _butNot(reader, term, neg_term); }
         },
         sequence: function(terms) {
             return function(reader) { return _sequence(reader, terms); }
@@ -193,10 +223,13 @@ define( function() {
         optional: function(term) {
             return function(reader) { return _optional(reader, term); }
         },
-        filter: function(term, pred) {
+        filter: function(term, pred, inv) {
+            pred = stringPredicate(pred, inv);
             return function(reader) { return _filter(reader, term, pred); }
         },
         greedy: function(char_pred, elem_pred) {
+            char_pred = singleCharPredicate(char_pred);
+            elem_pred = stringPredicate(elem_pred);
             return function(reader) { return _greedy(reader, char_pred, elem_pred); }
         }
 	}

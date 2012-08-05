@@ -1,9 +1,8 @@
 define(["./lexer"], function(L) {
 
-    var KEYWORDS = [
-        'function', 'var', 'break', 'return', 'true', 'false', 'while', 'for', 'do', 'break', 'in', 'this',
-        'new', 'try', 'catch', 'throw', 'finally'
-    ];
+    var KEYWORDS = ("break do instanceof typeof case else new var catch finally return void "
+                  + "continue for switch while debugger function this with default if throw "
+                  + "delete in try").split(' ');
 
     var PUNCTUATORS = ("{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % "
                      + "++ -- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= "
@@ -15,7 +14,7 @@ define(["./lexer"], function(L) {
                 if (s.indexOf((c = PUNCTUATORS[i][j])) < 0) s += c;
         return s;
     })();
-                     
+                
 	// Vocabulary 
 	
 	var unicodeLetter = L.singleChar( function(c) {
@@ -50,9 +49,17 @@ define(["./lexer"], function(L) {
         return (KEYWORDS.indexOf(text) >= 0);
     });
     
-    var identifier = L.filter(identifierName, function(text) {
-        return KEYWORDS.indexOf(text) < 0;
-    });
+    var nullLiteral = L.filter(identifierName, "null");
+
+    var booleanLiteral = L.filter(identifierName, ["true", "false"]);
+    
+    var reservedWord = L.anyOf([
+        keyword,
+        nullLiteral,
+        //futureReservedWord,
+        booleanLiteral ]);
+        
+    var identifier = L.butNot(identifierName, reservedWord);
     
     var punctuator = L.greedy( 
         function(c) { return PUNCT_CHARS.indexOf(c) >= 0; }, 
@@ -100,7 +107,7 @@ define(["./lexer"], function(L) {
     ]);
     
     var literal = L.anyOf([
-        //nullLiteral,
+        nullLiteral,
         //booleanLiteral,
         numericLiteral
         //stringLiteral,

@@ -38,7 +38,9 @@ define( function() {
         return text;
     }
     
-	function _anyOf(reader, terms) {
+    /** Not used at the moment.
+     */
+	function _anyOf_non_greedy(reader, terms) {
 		for (var i = 0; i < terms.length; i ++) {
 			var term = terms[i];
 			var text = term(reader);
@@ -47,6 +49,28 @@ define( function() {
 		return false;
 	}
     
+    function _anyOf(reader, terms) {
+        var result = false;
+        var end_pos;
+        for (var i = 0; i < terms.length; i ++) {
+            var term = terms[i];
+            reader.savePos();
+            var text = term(reader);
+            if (text !== false) {
+                if (!result || text.length > result.length) {
+                    result = text;
+                    end_pos = reader.getCurrentPos();
+                }
+            }
+            reader.restorePos();
+        }
+        if (result !== false) {
+            reader.goToPos(end_pos);
+            return result;
+        }
+        return false;
+    }
+
     /** This implements a 0..n times _repetition.
      */
 	function _repetition(reader, term) {

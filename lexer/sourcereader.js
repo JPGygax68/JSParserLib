@@ -14,15 +14,23 @@ define(["./charclasses"], function(CharClasses) {
 		this.indent = 0;
 	}
 	
+    SourceReader.prototype.getCurrentPos = function() {
+        return { i: this.i, row: this.row, col: this.col };
+    }
+    
+    SourceReader.prototype.goToPos = function(pos) {
+        this.i = pos.i; this.row = pos.row; this.col = pos.col;
+    }
+    
 	SourceReader.prototype.savePos = function() {
         if (typeof (this.marks) === 'undefined')
             this.marks = [];
-        this.marks.push({ i: this.i, row: this.row, col: this.col });
+        this.marks.push( this.getCurrentPos() );
 	}
 	
 	SourceReader.prototype.restorePos = function() {
         var pos = this.marks.pop();
-        this.i = pos.i; this.row = pos.row; this.col = pos.col;
+        this.goToPos(pos);
 	}
 
 	SourceReader.prototype.dropLastMark = function() {

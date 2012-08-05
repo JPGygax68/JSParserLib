@@ -87,22 +87,26 @@ define(["./lexer"], function(L) {
         L.sequence( [L.singleChar('.'), decimalDigits, L.optional(exponentPart)] ),
         L.sequence( [decimalIntegerLiteral, L.optional(exponentPart)] )
     ]);
+
+    var hexDigit = L.singleChar("0123456789abcdefABCDEF");
     
-    function globNumericConstant(reader) {
-        var c = reader.peekNextChar();
-        if (!c || '0123456789'.indexOf(c) < 0)
-            return false;
-        var num = '';
-        while (true) {
-            num += reader.consumeNextChar();
-            c = reader.peekNextChar();
-            if (!c || '0123456789.'.indexOf(c) < 0) break;
-            if (num.indexOf('.') >= 0 && c == '.') { return false; }
-        }
-        if (num === '.') return false;
-        return num;
-    }
+    var hexIntegerLiteral = L.sequence([
+        L.singleChar('0'), L.singleChar("xX"), hexDigit, L.repetition(hexDigit)
+    ]);
     
+    var numericLiteral = L.anyOf([
+        decimalLiteral,
+        hexIntegerLiteral
+    ]);
+    
+    var literal = L.anyOf([
+        //nullLiteral,
+        //booleanLiteral,
+        numericLiteral
+        //stringLiteral,
+        //regularExpressionLiteral
+    ]);
+
     function globStringConstant(reader) {
         var c = reader.peekNextChar();
         if (!c || '\'"'.indexOf(c) < 0)
@@ -191,7 +195,7 @@ define(["./lexer"], function(L) {
             { token_type: 'block_comment', globber: globBlockComment },
             { token_type: 'identifier', globber: identifier },
             { token_type: 'keyword', globber: keyword },
-            { token_type: 'decimalLiteral', globber: decimalLiteral },
+            { token_type: 'literal', globber: literal },
             { token_type: 'string_constant', globber: globStringConstant },
             { token_type: 'punctuator', globber: punctuator },
             { token_type: 'operator', globber: globOperator },

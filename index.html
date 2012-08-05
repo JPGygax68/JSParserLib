@@ -16,13 +16,14 @@
        */
       var obj = null;
       var mybool = false;
+      var s = "This is a string.", s2 = "Another string";
     }
   </script>
   <script type="text/javascript">
     $(function() {
       require.config( {
         urlArgs: "bust=" +  (new Date()).getTime()
-        //urlArgs: "bust=2"
+        //urlArgs: "bust=12"
       } );
       require(['./lexer/sourcereader', './parser/jsparser'], function(reading, parsing) {
         var source = $('#js_source').text();

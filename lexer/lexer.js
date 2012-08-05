@@ -71,6 +71,18 @@ define( function() {
         return false;
     }
 
+    function _noneOf(reader, terms) {
+        var end_pos;
+        for (var i = 0; i < terms.length; i ++) {
+            var term = terms[i];
+            reader.savePos();
+            var text = term(reader);
+            reader.restorePos();
+            if (text !== false) return false; // "none of" has failed
+        }
+        return "";
+    }
+
     /** Rejects the element if it can be parsed as the first term but also as the
      *  second one.
      */
@@ -122,7 +134,8 @@ define( function() {
     function _filter(reader, term, pred) {
         reader.savePos();
         var text = term(reader);
-        if (text === false || !pred(text)) { reader.restorePos(); return false; }
+        if (text === false || !pred(text)) { 
+            reader.restorePos(); return false; }
         reader.dropLastMark(); 
         return text;
     }
@@ -170,10 +183,9 @@ define( function() {
                 real_pred = function(c) { return s.indexOf(c) >= 0; }
             }
         }
-        else {
+        else
             real_pred = pred;
-        }
-        return invert ? invertedPred(real_pred) : real_pred;
+        return invert ? invertPred(real_pred) : real_pred;
     }
 
     function stringPredicate(pred, invert) {
@@ -182,11 +194,7 @@ define( function() {
             real_pred = function(text) { return text === pred; };
         }
         else if (pred instanceof Array) {
-            var a = pred;
-            for (var i = 0; i < a.length; i ++) a[i] = stringPredicate(a[i]);
-            real_pred = function(s) {
-                for (var i = 0; i < a.length; i ++) if (a[i](s)) return true;
-                return false; }
+            real_pred = arrayPredicate(pred, invert);
         }
         else {
             real_pred = pred;
@@ -194,6 +202,34 @@ define( function() {
         return (invert ? invertedPred(real_pred) : real_pred);
     }
 
+    function arrayPredicate(pred, invert) {
+        var a = pred;
+        for (var i = 0; i < a.length; i ++) a[i] = stringPredicate(a[i]);
+        return function(s) {
+            for (var i = 0; i < a.length; i ++) if (a[i](s)) return true;
+            return false; }
+    }
+    
+    function makeAnyChar(term, invert) {
+        var pred = singleCharPredicate(term, invert);
+        return function(reader) { return _singleChar(reader, pred); };
+    }
+    
+    function makeAnyOf(terms, invert) {
+        var pred;
+        var term;
+        if (typeof terms === 'string') {
+            pred = singleCharPredicate(terms);
+            if (invert) pred = invertPred(pred);
+            return function(reader) { return _singleChar(pred); }
+        }
+        else {
+            if (!(terms instanceof Array)) alert('!');
+            if (invert) return function(reader) { return _noneOf(reader, terms); }
+            else return function(reader) { return _anyOf(reader, terms); }
+        }
+    }
+    
 	//--- PUBLIC API ----------------------------------------------------------
 	
 	return {
@@ -204,12 +240,22 @@ define( function() {
             
         //--- Term factories --------------------------------------------------
         
-        singleChar: function(pred) {
-            pred = singleCharPredicate(pred);
+        anyChar: function(pred, inv) {
+            pred = singleCharPredicate(pred, inv);
             return function(reader) { return _singleChar(reader, pred); }
         },
+        
         anyOf: function(terms) {
-            return function(reader) { return _anyOf(reader, terms); }
+            if (typeof terms === 'string')
+                return makeAnyChar(terms, false)
+            else
+                return makeAnyOf(terms, false);
+        },
+        noneOf: function(terms) {
+            if (typeof terms === 'string')
+                return makeAnyChar(terms, true)
+            else
+                return makeAnyOf(terms, true);
         },
         butNot: function(term, neg_term) {
             return function(reader) { return _butNot(reader, term, neg_term); }

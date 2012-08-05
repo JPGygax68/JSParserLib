@@ -15,21 +15,23 @@ define(["./lexer"], function(L) {
         return s;
     })();
                 
+    var LINE_TERMINATORS = "\x0d\x0a"; // TODO: other line terminators
+    
 	// Vocabulary 
 	
-	var unicodeLetter = L.singleChar( function(c) {
+	var unicodeLetter = L.anyChar( function(c) {
         return (c >= 'A' && c <= 'Z') 
             || (c >= 'a' && c <= 'z');
         // TODO: actual support for Unicode!
     });
 	
-	var unicodeDigit = L.singleChar( function(c) {
-		return (c >= '0' && c <= '9');
+	var unicodeDigit = L.anyChar( function(c) {
+		return (c >= '0' && c <= '9'); // TODO: real Unicode
 	});
 	
 	var identifierStart = L.anyOf( [
         unicodeLetter,
-        L.singleChar( function(c) { return (c === '$') || (c === '_'); })
+        L.anyOf('$_')
     ]);
 	
 	var identifierPart = L.anyOf( [
@@ -67,44 +69,46 @@ define(["./lexer"], function(L) {
     );
     
     var decimalDigits = L.repetition(
-        L.singleChar("0123456789")
+        L.anyOf("0123456789")
     );
     
     var decimalIntegerLiteral = L.anyOf([
-        L.singleChar('0'),
+        L.anyOf('0'),
         L.sequence([
-            L.singleChar("12345789"),
+            L.anyOf("12345789"),
             decimalDigits
         ])
     ]);
     
     var signedInteger = L.anyOf([
-        L.sequence( [L.singleChar("+-"), decimalDigits] ),
+        L.sequence( [L.anyOf("+-"), decimalDigits] ),
         decimalDigits
     ]);
     
     var exponentPart = L.sequence([
-        L.singleChar('eE'), signedInteger
+        L.anyOf('eE'), signedInteger
     ]);
     
     var decimalLiteral = L.anyOf([
         L.sequence([
-            decimalIntegerLiteral, L.singleChar('.'), L.optional(decimalDigits), L.optional(exponentPart)
+            decimalIntegerLiteral, L.anyOf('.'), L.optional(decimalDigits), L.optional(exponentPart)
         ]),
-        L.sequence( [L.singleChar('.'), decimalDigits, L.optional(exponentPart)] ),
+        L.sequence( [L.anyOf('.'), decimalDigits, L.optional(exponentPart)] ),
         L.sequence( [decimalIntegerLiteral, L.optional(exponentPart)] )
     ]);
 
-    var hexDigit = L.singleChar("0123456789abcdefABCDEF");
+    var hexDigit = L.anyOf("0123456789abcdefABCDEF");
     
     var hexIntegerLiteral = L.sequence([
-        L.singleChar('0'), L.singleChar("xX"), hexDigit, L.repetition(hexDigit)
+        L.anyOf('0'), L.anyOf("xX"), hexDigit, L.repetition(hexDigit)
     ]);
     
     var numericLiteral = L.anyOf([
         decimalLiteral,
         hexIntegerLiteral
     ]);
+    
+    //var notLineTerminator = L.anyOf('"\\x0d\x0a', true); // TODO: other line terminators
     
     var literal = L.anyOf([
         nullLiteral,
@@ -114,6 +118,45 @@ define(["./lexer"], function(L) {
         //regularExpressionLiteral
     ]);
 
+    var singleEscapeCharacter = L.anyOf('\'"\\bfnrtv');
+    
+    var nonEscapeCharacter = L.noneOf('\'"\\bfnrtv');
+    
+    var characterEscapeSequence = L.anyOf([
+        singleEscapeCharacter,
+        nonEscapeCharacter
+    ]);
+    
+    var escapeSequence = L.anyOf([
+        characterEscapeSequence
+        // TODO: the rest...
+    ]);
+    
+    var doubleStringCharacter = L.anyOf([
+        L.noneOf('"\\'+LINE_TERMINATORS),
+        L.sequence([L.anyOf('\\'), escapeSequence])
+        // TODO: lineContinuation
+    ]);
+    
+    var singleStringCharacter = L.anyOf([
+        L.noneOf("'\\"+LINE_TERMINATORS),
+        L.sequence([L.anyOf('\\'), escapeSequence])
+        // TODO: lineContinuation
+    ]);
+    
+    var stringLiteral = L.anyOf([
+        L.sequence([
+            L.anyOf('"'),
+            L.repetition(doubleStringCharacter),
+            L.anyOf('"')
+        ]),
+        L.sequence([
+            L.anyOf("'"),
+            L.repetition(singleStringCharacter),
+            L.anyOf("'")
+        ])
+    ]);
+    
     function globStringConstant(reader) {
         var c = reader.peekNextChar();
         if (!c || '\'"'.indexOf(c) < 0)
@@ -203,7 +246,7 @@ define(["./lexer"], function(L) {
             { token_type: 'identifier', globber: identifier },
             { token_type: 'keyword', globber: keyword },
             { token_type: 'literal', globber: literal },
-            { token_type: 'string_constant', globber: globStringConstant },
+            { token_type: 'stringLiteral', globber: stringLiteral },
             { token_type: 'punctuator', globber: punctuator },
             { token_type: 'operator', globber: globOperator },
             { token_type: 'whitespace', globber: globWhitespace },

@@ -185,8 +185,8 @@ define( function() {
             var a = pred;
             for (var i = 0; i < a.length; i ++) a[i] = stringPredicate(a[i]);
             real_pred = function(s) {
-                for (var i = 0; i < a.length; i ++) if (a[i](s) !== true) return false;
-                return true; }
+                for (var i = 0; i < a.length; i ++) if (a[i](s)) return true;
+                return false; }
         }
         else {
             real_pred = pred;

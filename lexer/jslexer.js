@@ -108,7 +108,7 @@ define(["./lexer"], function(L) {
     
     var literal = L.anyOf([
         nullLiteral,
-        //booleanLiteral,
+        booleanLiteral,
         numericLiteral
         //stringLiteral,
         //regularExpressionLiteral

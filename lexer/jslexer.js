@@ -19,13 +19,13 @@ define(["./lexer"], function(L) {
     
 	// Vocabulary 
 	
-	var unicodeLetter = L.anyChar( function(c) {
+	var unicodeLetter = L.aChar( function(c) {
         return (c >= 'A' && c <= 'Z') 
             || (c >= 'a' && c <= 'z');
         // TODO: actual support for Unicode!
     });
 	
-	var unicodeDigit = L.anyChar( function(c) {
+	var unicodeDigit = L.aChar( function(c) {
 		return (c >= '0' && c <= '9'); // TODO: real Unicode
 	});
 	
@@ -108,8 +108,6 @@ define(["./lexer"], function(L) {
         hexIntegerLiteral
     ]);
     
-    //var notLineTerminator = L.anyOf('"\\x0d\x0a', true); // TODO: other line terminators
-    
     var literal = L.anyOf([
         nullLiteral,
         booleanLiteral,
@@ -132,10 +130,20 @@ define(["./lexer"], function(L) {
         // TODO: the rest...
     ]);
     
+    var lineTerminatorSequence = L.anyOf([
+        L.aChar('0x0A'),
+        L.sequence([ L.aChar('0x0D'), L.not('0x0A') ]),
+        // TODO: LS
+        // TODO: PS
+        L.sequence('0x0D0x0A')        
+    ]);
+    
+    var lineContinuation = L.sequence([ L.anyOf('\\'), lineTerminatorSequence ]);
+    
     var doubleStringCharacter = L.anyOf([
         L.noneOf('"\\'+LINE_TERMINATORS),
-        L.sequence([L.anyOf('\\'), escapeSequence])
-        // TODO: lineContinuation
+        L.sequence([L.anyOf('\\'), escapeSequence]),
+        lineContinuation
     ]);
     
     var singleStringCharacter = L.anyOf([

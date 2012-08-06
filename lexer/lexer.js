@@ -207,12 +207,12 @@ define( function() {
             return false; }
     }
     
-    function makeAnyChar(rule, invert) {
+    function makeAnyCharRule(rule, invert) {
         var pred = singleCharPredicate(rule, invert);
         return function(reader) { return _singleChar(reader, pred); };
     }
     
-    function makeAnyOf(rules, invert) {
+    function makeAnyOfRule(rules, invert) {
         var pred;
         var rule;
         if (typeof rules === 'string') {
@@ -220,11 +220,12 @@ define( function() {
             if (invert) pred = invertPred(pred);
             return function(reader) { return _singleChar(pred); }
         }
-        else {
-            if (!(rules instanceof Array)) throw 'Lexer.makeAnyOf() called with non-supported "rules" argument';
+        else if (rules instanceof Array) {
             if (invert) return function(reader) { return _noneOf(reader, rules); }
             else return function(reader) { return _anyOf(reader, rules); }
         }
+        else
+            throw 'Parser INTERNAL ERROR: makeAnyOfRule() called with non-supported "rules" argument';
     }
     
 	//--- PUBLIC API ----------------------------------------------------------
@@ -244,37 +245,49 @@ define( function() {
          */
         anyOf: function(rules) {
             if (typeof rules === 'string')
-                return makeAnyChar(rules, false)
+                return makeAnyCharRule(rules, false)
             else if (rules instanceof Array)
-                return makeAnyOf(rules, false);
+                return makeAnyOfRule(rules, false);
             else
                 throw 'Lexer.anyOf(): unsupported type for argument "rules"';
         },
 
         /** This is the opposite of anyOf().
-         *  Note that this rule will never actually consume anything: in case
-         *  any of the specified rules (or characters, if the "rules" argument
-         *  is a string) *would* match, the rule will backtrack and return the
-         *  boolean value "false".
+         *  Note that a noneOf rule will never actually consume anything: in 
+         *  case any of the specified rules (or characters, if the "rules" 
+         *  argument is a string) *would* match, the rule will backtrack and 
+         *  return the boolean value "false".
          *  (If none of the rules could match, the generated noneOf rule will 
-         *  return an empty string. If you plan to use this rule directly,
-         *  make sure you check its result explicitly with the non-typecasting
-         *  comparison operator !==)
+         *  return an empty string. If you plan to use a noneOf rule directly,
+         *  make sure you check the its result explicitly with the non-
+         *  typecasting comparison operator !==)
          */
         noneOf: function(rules) {
             if (typeof rules === 'string')
-                return makeAnyChar(rules, true)
+                return makeAnyCharRule(rules, true)
             else if (rules instanceof Array)
-                return makeAnyOf(rules, true);
+                return makeAnyOfRule(rules, true);
             else
                 throw 'Lexer.noneOf(): unsupported type for argument "rules"';
+        },
+        
+        not: function(rules) {
+            if (typeof rules === 'string')
+                return makeAnyCharRule(rules, true)
+            else if (rules instanceof Array)
+                return makeAnyOfRule(rules, true)
+            else
+                return makeAnyOfRule([rules], true);
         },
         
         /** Generates a rule that will consume a single character conforming
          *  to the specified predicate.
          */
-        anyChar: function(pred) {
-            return function(reader) { return _singleChar(reader, pred); }
+        aChar: function(pred) {
+            if (typeof pred === 'string')
+                return makeAnyCharRule(pred, false)
+            else
+                return function(reader) { return _singleChar(reader, pred); }
         },
         
         butNot: function(rule, neg_rule) {
@@ -282,7 +295,12 @@ define( function() {
         },
         
         sequence: function(rules) {
-            return function(reader) { return _sequence(reader, rules); }
+            if (typeof rules === 'string')
+                return function(reader) { return _singleChar(reader, singleCharPredicate(rules)); }
+            else if (rules instanceof Array)
+                return function(reader) { return _sequence(reader, rules); }
+            else
+                throw 'Lexer.sequence(): unsupported type for argument "rules"';
         },
         
         repetition: function(rule) {

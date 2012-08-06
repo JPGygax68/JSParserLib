@@ -42,20 +42,20 @@ define( function() {
     
     /** Not used at the moment.
      */
-	function _anyOf_non_greedy(reader, terms) {
-		for (var i = 0; i < terms.length; i ++) {
-			var text = terms[i](reader);
+	function _anyOf_non_greedy(reader, rules) {
+		for (var i = 0; i < rules.length; i ++) {
+			var text = rules[i](reader);
 			if (text !== false) return text;
 		}
 		return false;
 	}
     
-    function _anyOf(reader, terms) {
+    function _anyOf(reader, rules) {
         var result = false;
         var end_pos;
-        for (var i = 0; i < terms.length; i ++) {
+        for (var i = 0; i < rules.length; i ++) {
             reader.savePos();
-            var text = terms[i](reader);
+            var text = rules[i](reader);
             if (text !== false) {
                 if (result === false || text.length > result.length) {
                     result = text;
@@ -68,24 +68,24 @@ define( function() {
         return result;
     }
 
-    function _noneOf(reader, terms) {
+    function _noneOf(reader, rules) {
         var end_pos;
-        for (var i = 0; i < terms.length; i ++) {
-            var term = terms[i];
+        for (var i = 0; i < rules.length; i ++) {
+            var rule = rules[i];
             reader.savePos();
-            var text = term(reader);
+            var text = rule(reader);
             reader.restorePos();
             if (text !== false) return false; // "none of" has failed
         }
         return "";
     }
 
-    /** Rejects the element if it can be parsed as the first term but also as the
+    /** Rejects the element if it can be parsed as the first rule but also as the
      *  second one.
      */
-    function _butNot(reader, term, neg_term) {
+    function _butNot(reader, rule, neg_term) {
         reader.savePos();
-        var res = term(reader);
+        var res = rule(reader);
         var end_pos = reader.getCurrentPos();
         reader.restorePos();
         if (res === false) return false;
@@ -99,28 +99,28 @@ define( function() {
     
     /** This implements a 0..n times _repetition.
      */
-	function _repetition(reader, term) {
+	function _repetition(reader, rule) {
 		var text = '';
 		while (true) {
-			var part = term(reader);
+			var part = rule(reader);
 			if (part === false) return text;
 			text += part;
 		}
         alert('_repetition(): must not arrive at end!');
 	}
 	
-    function _optional(reader, term) {
-        var part = term(reader);
+    function _optional(reader, rule) {
+        var part = rule(reader);
         if (part === false) return "";
         else return part;
     }
     
-	function _sequence(reader, terms) {
+	function _sequence(reader, rules) {
 		reader.savePos();
 		var text = '';
-		for (var i = 0; i < terms.length; i ++) {
-			var term = terms[i];
-			var part = term(reader);
+		for (var i = 0; i < rules.length; i ++) {
+			var rule = rules[i];
+			var part = rule(reader);
 			if (part === false) { reader.restorePos(); return false; }
 			text += part;
 		}
@@ -128,9 +128,9 @@ define( function() {
 		return text;
 	}
 	
-    function _filter(reader, term, pred) {
+    function _filter(reader, rule, pred) {
         reader.savePos();
-        var text = term(reader);
+        var text = rule(reader);
         if (text === false || !pred(text)) { 
             reader.restorePos(); return false; }
         reader.dropLastMark(); 
@@ -207,23 +207,23 @@ define( function() {
             return false; }
     }
     
-    function makeAnyChar(term, invert) {
-        var pred = singleCharPredicate(term, invert);
+    function makeAnyChar(rule, invert) {
+        var pred = singleCharPredicate(rule, invert);
         return function(reader) { return _singleChar(reader, pred); };
     }
     
-    function makeAnyOf(terms, invert) {
+    function makeAnyOf(rules, invert) {
         var pred;
-        var term;
-        if (typeof terms === 'string') {
-            pred = singleCharPredicate(terms);
+        var rule;
+        if (typeof rules === 'string') {
+            pred = singleCharPredicate(rules);
             if (invert) pred = invertPred(pred);
             return function(reader) { return _singleChar(pred); }
         }
         else {
-            if (!(terms instanceof Array)) alert('!');
-            if (invert) return function(reader) { return _noneOf(reader, terms); }
-            else return function(reader) { return _anyOf(reader, terms); }
+            if (!(rules instanceof Array)) throw 'Lexer.makeAnyOf() called with non-supported "rules" argument';
+            if (invert) return function(reader) { return _noneOf(reader, rules); }
+            else return function(reader) { return _anyOf(reader, rules); }
         }
     }
     
@@ -235,46 +235,67 @@ define( function() {
 			return new Lexer(reader, globbers /*, parser_fun, parser_obj*/); 
         },
             
-        //--- Term factories --------------------------------------------------
+        //--- Rule factories --------------------------------------------------
         
-        anyChar: function(pred, inv) {
-            pred = singleCharPredicate(pred, inv);
+        /** Generates a rule that is an OR combination of the specified list of
+         *  rules.
+         *  If the "rules" parameter consists of a string, the generated rule
+         *  will consume any single character contained in that string.
+         */
+        anyOf: function(rules) {
+            if (typeof rules === 'string')
+                return makeAnyChar(rules, false)
+            else if (rules instanceof Array)
+                return makeAnyOf(rules, false);
+            else
+                throw 'Lexer.anyOf(): unsupported type for argument "rules"';
+        },
+
+        /** This is the opposite of anyOf().
+         *  Note that this rule will never actually consume anything: in case
+         *  any of the specified rules (or characters, if the "rules" argument
+         *  is a string) *would* match, the rule will backtrack and return the
+         *  boolean value "false".
+         *  (If none of the rules could match, the generated noneOf rule will 
+         *  return an empty string. If you plan to use this rule directly,
+         *  make sure you check its result explicitly with the non-typecasting
+         *  comparison operator !==)
+         */
+        noneOf: function(rules) {
+            if (typeof rules === 'string')
+                return makeAnyChar(rules, true)
+            else if (rules instanceof Array)
+                return makeAnyOf(rules, true);
+            else
+                throw 'Lexer.noneOf(): unsupported type for argument "rules"';
+        },
+        
+        /** Generates a rule that will consume a single character conforming
+         *  to the specified predicate.
+         */
+        anyChar: function(pred) {
             return function(reader) { return _singleChar(reader, pred); }
         },
         
-        anyOf: function(terms) {
-            if (typeof terms === 'string')
-                return makeAnyChar(terms, false)
-            else
-                return makeAnyOf(terms, false);
+        butNot: function(rule, neg_rule) {
+            return function(reader) { return _butNot(reader, rule, neg_rule); }
         },
         
-        noneOf: function(terms) {
-            if (typeof terms === 'string')
-                return makeAnyChar(terms, true)
-            else
-                return makeAnyOf(terms, true);
+        sequence: function(rules) {
+            return function(reader) { return _sequence(reader, rules); }
         },
         
-        butNot: function(term, neg_term) {
-            return function(reader) { return _butNot(reader, term, neg_term); }
+        repetition: function(rule) {
+            return function(reader) { return _repetition(reader, rule); }
         },
         
-        sequence: function(terms) {
-            return function(reader) { return _sequence(reader, terms); }
+        optional: function(rule) {
+            return function(reader) { return _optional(reader, rule); }
         },
         
-        repetition: function(term) {
-            return function(reader) { return _repetition(reader, term); }
-        },
-        
-        optional: function(term) {
-            return function(reader) { return _optional(reader, term); }
-        },
-        
-        filter: function(term, pred, inv) {
+        filter: function(rule, pred, inv) {
             pred = stringPredicate(pred, inv);
-            return function(reader) { return _filter(reader, term, pred); }
+            return function(reader) { return _filter(reader, rule, pred); }
         },
         
         greedy: function(char_pred, elem_pred) {

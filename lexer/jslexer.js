@@ -157,31 +157,6 @@ define(["./lexer"], function(L) {
         ])
     ]);
     
-    function globStringConstant(reader) {
-        var c = reader.peekNextChar();
-        if (!c || '\'"'.indexOf(c) < 0)
-            return false;
-        var s = reader.consumeNextChar();
-        while ((c = reader.peekNextChar())) {
-            if (c == '\'' && s[0] == '\'') {
-                s += reader.consumeNextChar();
-                break;
-            }            
-            else if (c == '"' && s[0] == '"') {
-                s += reader.consumeNextChar();
-                break;
-            }            
-            else if (c == '\\') {
-                s += reader.consumeNextChar();
-                s += reader.consumeNextChar();
-            }
-            else {
-                s += reader.consumeNextChar();
-            }
-        }
-        return s;
-    }
-    
     function globOperator(reader) {
         var c = reader.peekNextChar();
         var oper = '';

@@ -16,6 +16,8 @@ define( function() {
 	
 	//--- Lexer building blocks -----------------------------------------------
 	
+    // TODO: lookahead predicate
+    
 	function _singleChar(reader, pred) {
 		var c = reader.peekNextChar();
 		if (pred(c)) { reader.consumeNextChar(); return c; }
@@ -42,8 +44,7 @@ define( function() {
      */
 	function _anyOf_non_greedy(reader, terms) {
 		for (var i = 0; i < terms.length; i ++) {
-			var term = terms[i];
-			var text = term(reader);
+			var text = terms[i](reader);
 			if (text !== false) return text;
 		}
 		return false;
@@ -53,22 +54,18 @@ define( function() {
         var result = false;
         var end_pos;
         for (var i = 0; i < terms.length; i ++) {
-            var term = terms[i];
             reader.savePos();
-            var text = term(reader);
+            var text = terms[i](reader);
             if (text !== false) {
-                if ((!result) || (text.length > result.length)) {
+                if (result === false || text.length > result.length) {
                     result = text;
                     end_pos = reader.getCurrentPos();
                 }
             }
             reader.restorePos();
         }
-        if (result !== false) {
-            reader.goToPos(end_pos);
-            return result;
-        }
-        return false;
+        if (result !== false) reader.goToPos(end_pos);
+        return result;
     }
 
     function _noneOf(reader, terms) {
@@ -251,28 +248,35 @@ define( function() {
             else
                 return makeAnyOf(terms, false);
         },
+        
         noneOf: function(terms) {
             if (typeof terms === 'string')
                 return makeAnyChar(terms, true)
             else
                 return makeAnyOf(terms, true);
         },
+        
         butNot: function(term, neg_term) {
             return function(reader) { return _butNot(reader, term, neg_term); }
         },
+        
         sequence: function(terms) {
             return function(reader) { return _sequence(reader, terms); }
         },
+        
         repetition: function(term) {
             return function(reader) { return _repetition(reader, term); }
         },
+        
         optional: function(term) {
             return function(reader) { return _optional(reader, term); }
         },
+        
         filter: function(term, pred, inv) {
             pred = stringPredicate(pred, inv);
             return function(reader) { return _filter(reader, term, pred); }
         },
+        
         greedy: function(char_pred, elem_pred) {
             char_pred = singleCharPredicate(char_pred);
             elem_pred = stringPredicate(elem_pred);

@@ -1,5 +1,7 @@
 define( function() {
 
+    // TODO: rename this module (to "Parser"?)
+    
 	//--- Token class ---------------------------------------------------------
 	
 	/** Constructor.
@@ -14,7 +16,7 @@ define( function() {
 		return this.type == type && (text === undefined || this.text === text);
 	}
 	
-	//--- Lexer building blocks -----------------------------------------------
+	//--- Building blocks -----------------------------------------------------
 	
     // TODO: lookahead predicate
     
@@ -106,7 +108,7 @@ define( function() {
 			if (part === false) return text;
 			text += part;
 		}
-        alert('_repetition(): must not arrive at end!');
+        throw '_repetition(): must not arrive at end!';
 	}
 	
     function _optional(reader, rule) {
@@ -228,6 +230,15 @@ define( function() {
             throw 'Parser INTERNAL ERROR: makeAnyOfRule() called with non-supported "rules" argument';
     }
     
+    function makeNoneOfRule(rules) {
+        if (typeof rules === 'string')
+            return makeAnyCharRule(rules, true)
+        else if (rules instanceof Array)
+            return makeAnyOfRule(rules, true);
+        else
+            return makeAnyOfRule([rules], true);
+    }
+    
 	//--- PUBLIC API ----------------------------------------------------------
 	
 	return {
@@ -256,29 +267,18 @@ define( function() {
          *  Note that a noneOf rule will never actually consume anything: in 
          *  case any of the specified rules (or characters, if the "rules" 
          *  argument is a string) *would* match, the rule will backtrack and 
-         *  return the boolean value "false".
-         *  (If none of the rules could match, the generated noneOf rule will 
-         *  return an empty string. If you plan to use a noneOf rule directly,
-         *  make sure you check the its result explicitly with the non-
-         *  typecasting comparison operator !==)
+         *  return the boolean value "false"; but if none of its sub-rules 
+         *  matches, a noneOf rule will return an empty string. So, if you 
+         *  plan to use a noneOf rule directly,  make sure you check its 
+         *  result explicitly with the non-typecasting comparison operator 
+         *  !==, rather than just evaluating it as a boolean value, since an
+         *  empty string in JavaScript would convert to boolean "false"!
          */
-        noneOf: function(rules) {
-            if (typeof rules === 'string')
-                return makeAnyCharRule(rules, true)
-            else if (rules instanceof Array)
-                return makeAnyOfRule(rules, true);
-            else
-                throw 'Lexer.noneOf(): unsupported type for argument "rules"';
-        },
+        noneOf: function(rules) { return makeNoneOfRule(rules); },
         
-        not: function(rules) {
-            if (typeof rules === 'string')
-                return makeAnyCharRule(rules, true)
-            else if (rules instanceof Array)
-                return makeAnyOfRule(rules, true)
-            else
-                return makeAnyOfRule([rules], true);
-        },
+        /** Similar to noneOf(), but for a single rule.
+         */
+        not: function(rules) { return makeNoneOfRule(rules); },
         
         /** Generates a rule that will consume a single character conforming
          *  to the specified predicate.
@@ -290,10 +290,17 @@ define( function() {
                 return function(reader) { return _singleChar(reader, pred); }
         },
         
+        /** Generates a rule that will consume an element if it conforms to
+         *  the first specified rule but could *not* also be consumed by the
+         *  second rule.
+         */
         butNot: function(rule, neg_rule) {
             return function(reader) { return _butNot(reader, rule, neg_rule); }
         },
         
+        /** As the name says, generates a rule that consumes an element conforming
+         *  to all the specified sub-rules taken in sequence.
+         */
         sequence: function(rules) {
             if (typeof rules === 'string')
                 return function(reader) { return _singleChar(reader, singleCharPredicate(rules)); }
@@ -303,14 +310,24 @@ define( function() {
                 throw 'Lexer.sequence(): unsupported type for argument "rules"';
         },
         
+        /** Generates a rule consuming as many conforming elements as possible
+         *  (i.e. "greedily").
+         */
         repetition: function(rule) {
             return function(reader) { return _repetition(reader, rule); }
         },
         
+        /** Generates an optional version of the specified rule.
+         */
         optional: function(rule) {
             return function(reader) { return _optional(reader, rule); }
         },
         
+        /** Generates a predicate-filtered version of the specified rule.
+         *  The meaning of the predicate can be inverted by setting "inv" to true.
+         *  The predicate can be replaced by a simple string, against which the
+         *  the product of the rule would then be compared.
+         */
         filter: function(rule, pred, inv) {
             pred = stringPredicate(pred, inv);
             return function(reader) { return _filter(reader, rule, pred); }

@@ -70,16 +70,11 @@ define( function() {
         return result;
     }
 
-    function _noneOf(reader, rules) {
-        var end_pos;
-        for (var i = 0; i < rules.length; i ++) {
-            var rule = rules[i];
-            reader.savePos();
-            var text = rule(reader);
-            reader.restorePos();
-            if (text !== false) return false; // "none of" has failed
-        }
-        return "";
+    function _lookAhead(reader, rule) {
+        reader.savePos();
+        var text = rule(reader);
+        reader.restorePos();
+        return text;
     }
 
     /** Rejects the element if it can be parsed as the first rule but also as the
@@ -121,8 +116,7 @@ define( function() {
 		reader.savePos();
 		var text = '';
 		for (var i = 0; i < rules.length; i ++) {
-			var rule = rules[i];
-			var part = rule(reader);
+			var part = rules[i](reader);
 			if (part === false) { reader.restorePos(); return false; }
 			text += part;
 		}
@@ -167,15 +161,18 @@ define( function() {
 
     //--- Helper functions ----------------------------------------------------
 
-    function invertPred(pred) {
+    function invertPredicate(pred) {
         return function(s) { return ! pred(s); }
     }
     
-    function singleCharPredicate(pred, invert) {
+    function singleCharPredicate(pred) {
         var real_pred;
         if (typeof pred === 'string') {
             var s = pred;
-            if (pred.length === 1) {
+            if (pred.length === 0) {
+                real_pred = function(c) { return true; }
+            }
+            else if (pred.length === 1) {
                 real_pred = function(c) { return c === s; };
             }
             else {
@@ -184,10 +181,18 @@ define( function() {
         }
         else
             real_pred = pred;
-        return invert ? invertPred(real_pred) : real_pred;
+        return real_pred;
     }
 
-    function stringPredicate(pred, invert) {
+    function arrayPredicate(pred, invert) {
+        var a = pred;
+        for (var i = 0; i < a.length; i ++) a[i] = convertPredicate(a[i]);
+        return function(s) {
+            for (var i = 0; i < a.length; i ++) if (a[i](s)) return true;
+            return false; }
+    }
+    
+    function convertPredicate(pred, invert) {
         var real_pred;
         if (typeof pred === 'string') {
             real_pred = function(text) { return text === pred; };
@@ -201,42 +206,13 @@ define( function() {
         return (invert ? invertedPred(real_pred) : real_pred);
     }
 
-    function arrayPredicate(pred, invert) {
-        var a = pred;
-        for (var i = 0; i < a.length; i ++) a[i] = stringPredicate(a[i]);
-        return function(s) {
-            for (var i = 0; i < a.length; i ++) if (a[i](s)) return true;
-            return false; }
-    }
-    
-    function makeAnyCharRule(rule, invert) {
-        var pred = singleCharPredicate(rule, invert);
+    /** Generates a rule that will consume a single character if it's among those
+     *  contained in "chars".
+     */
+    function makeAnyCharRule(chars, invert) {
+        var pred = singleCharPredicate(chars, invert);
+        if (invert) pred = invertPredicate(pred);
         return function(reader) { return _singleChar(reader, pred); };
-    }
-    
-    function makeAnyOfRule(rules, invert) {
-        var pred;
-        var rule;
-        if (typeof rules === 'string') {
-            pred = singleCharPredicate(rules);
-            if (invert) pred = invertPred(pred);
-            return function(reader) { return _singleChar(pred); }
-        }
-        else if (rules instanceof Array) {
-            if (invert) return function(reader) { return _noneOf(reader, rules); }
-            else return function(reader) { return _anyOf(reader, rules); }
-        }
-        else
-            throw 'Parser INTERNAL ERROR: makeAnyOfRule() called with non-supported "rules" argument';
-    }
-    
-    function makeNoneOfRule(rules) {
-        if (typeof rules === 'string')
-            return makeAnyCharRule(rules, true)
-        else if (rules instanceof Array)
-            return makeAnyOfRule(rules, true);
-        else
-            return makeAnyOfRule([rules], true);
     }
     
 	//--- PUBLIC API ----------------------------------------------------------
@@ -249,37 +225,6 @@ define( function() {
             
         //--- Rule factories --------------------------------------------------
         
-        /** Generates a rule that is an OR combination of the specified list of
-         *  rules.
-         *  If the "rules" parameter consists of a string, the generated rule
-         *  will consume any single character contained in that string.
-         */
-        anyOf: function(rules) {
-            if (typeof rules === 'string')
-                return makeAnyCharRule(rules, false)
-            else if (rules instanceof Array)
-                return makeAnyOfRule(rules, false);
-            else
-                throw 'Lexer.anyOf(): unsupported type for argument "rules"';
-        },
-
-        /** This is the opposite of anyOf().
-         *  Note that a noneOf rule will never actually consume anything: in 
-         *  case any of the specified rules (or characters, if the "rules" 
-         *  argument is a string) *would* match, the rule will backtrack and 
-         *  return the boolean value "false"; but if none of its sub-rules 
-         *  matches, a noneOf rule will return an empty string. So, if you 
-         *  plan to use a noneOf rule directly,  make sure you check its 
-         *  result explicitly with the non-typecasting comparison operator 
-         *  !==, rather than just evaluating it as a boolean value, since an
-         *  empty string in JavaScript would convert to boolean "false"!
-         */
-        noneOf: function(rules) { return makeNoneOfRule(rules); },
-        
-        /** Similar to noneOf(), but for a single rule.
-         */
-        not: function(rules) { return makeNoneOfRule(rules); },
-        
         /** Generates a rule that will consume a single character conforming
          *  to the specified predicate.
          */
@@ -288,6 +233,57 @@ define( function() {
                 return makeAnyCharRule(pred, false)
             else
                 return function(reader) { return _singleChar(reader, pred); }
+        },
+        
+        /** This is the opposite of aChar(): it generates a rule consuming
+         *  any character *not* in "chars".
+         */
+        noneOf: function(chars) { 
+            if (typeof chars === 'string') {
+                var pred = invertPredicate(singleCharPredicate(chars));
+                return function(reader) { return _singleChar(reader, pred); }
+            }
+            else
+                throw 'Parser: noneOf() called with non-supported "chars" argument';
+        },
+        
+        /** Similar to noneOf(), but for a single character.
+         */
+        not: function(char_) {
+            if (typeof char_ === 'string' && char_.length === 1) {
+                var pred = invertPredicate(singleCharPredicate(char_));
+                return function(reader) { return _singleChar(reader, pred); }
+            }
+            else
+                throw 'Parser: not() called with non-supported "rules" argument: ' + char_;
+        },
+
+        /** Generates a rule that is an OR combination of the specified list of
+         *  rules.
+         *  If the "rules" parameter consists of a string, the generated rule
+         *  will consume any single character contained in that string (in which
+         *  case aChar() could be used interchangeably).
+         */
+        anyOf: function(rules) {
+            if (typeof rules === 'string') {
+                var pred = singleCharPredicate(rules);
+                return function(reader) { return _singleChar(reader, pred); }
+            }
+            else if (rules instanceof Array) {
+                return function(reader) { return _anyOf(reader, rules); }
+            }
+            else
+                throw 'Parser: anyOf() called with non-supported "rules" argument';
+        },
+
+        /** lookAhead() generates a rule that will never consume anything.
+         *  Instead, it will check if the specified rule *could* match, then
+         *  backtracks and returns either:
+         *  - an empty string that means that the rule *would* match, or
+         *  - the value *false*, meaning that the rule would *not* match.
+         */
+        lookAhead: function(rule) {
+            return function(reader) { return _lookAhead(reader, rule); }
         },
         
         /** Generates a rule that will consume an element if it conforms to
@@ -302,10 +298,15 @@ define( function() {
          *  to all the specified sub-rules taken in sequence.
          */
         sequence: function(rules) {
-            if (typeof rules === 'string')
-                return function(reader) { return _singleChar(reader, singleCharPredicate(rules)); }
-            else if (rules instanceof Array)
+            if (typeof rules === 'string') {
+                var real_rules = rules.split('').map( function(c) { return makeAnyCharRule(c); } );
+                //console.log(real_rules);
+                return function(reader) { return _sequence(reader, real_rules); }
+            }
+            else if (rules instanceof Array) {
+                // TODO: support converting array members
                 return function(reader) { return _sequence(reader, rules); }
+            }
             else
                 throw 'Lexer.sequence(): unsupported type for argument "rules"';
         },
@@ -329,13 +330,13 @@ define( function() {
          *  the product of the rule would then be compared.
          */
         filter: function(rule, pred, inv) {
-            pred = stringPredicate(pred, inv);
+            pred = convertPredicate(pred, inv);
             return function(reader) { return _filter(reader, rule, pred); }
         },
         
         greedy: function(char_pred, elem_pred) {
             char_pred = singleCharPredicate(char_pred);
-            elem_pred = stringPredicate(elem_pred);
+            elem_pred = convertPredicate(elem_pred);
             return function(reader) { return _greedy(reader, char_pred, elem_pred); }
         }
 	}

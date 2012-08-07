@@ -15,7 +15,7 @@ define(["./lexer"], function(L) {
         return s;
     })();
                 
-    var LINE_TERMINATORS = "\x0d\x0a"; // TODO: other line terminators
+    var LINE_TERMINATORS = "\x0D\x0A"; // TODO: other line terminators
     
 	// Vocabulary 
 	
@@ -131,25 +131,25 @@ define(["./lexer"], function(L) {
     ]);
     
     var lineTerminatorSequence = L.anyOf([
-        L.aChar('0x0A'),
-        L.sequence([ L.aChar('0x0D'), L.not('0x0A') ]),
+        L.aChar('\x0A'),
+        L.sequence([ L.aChar('\x0D'), L.lookAhead(L.not('\x0A')) ]),
         // TODO: LS
         // TODO: PS
-        L.sequence('0x0D0x0A')        
+        L.sequence('\x0D\x0A')        
     ]);
     
     var lineContinuation = L.sequence([ L.anyOf('\\'), lineTerminatorSequence ]);
     
     var doubleStringCharacter = L.anyOf([
         L.noneOf('"\\'+LINE_TERMINATORS),
-        L.sequence([L.anyOf('\\'), escapeSequence]),
+        L.sequence([ L.anyOf('\\'), escapeSequence ]),
         lineContinuation
     ]);
     
     var singleStringCharacter = L.anyOf([
         L.noneOf("'\\"+LINE_TERMINATORS),
-        L.sequence([L.anyOf('\\'), escapeSequence])
-        // TODO: lineContinuation
+        L.sequence([ L.anyOf('\\'), escapeSequence ]),
+        lineContinuation
     ]);
     
     var stringLiteral = L.anyOf([
@@ -163,6 +163,27 @@ define(["./lexer"], function(L) {
             L.repetition(singleStringCharacter),
             L.anyOf("'")
         ])
+    ]);
+
+    var multiLineCommentChar = L.anyOf([
+        L.not('*'),
+        L.sequence([ L.aChar('*'), L.lookAhead(L.not('/')) ]),
+    ]);
+    
+    var multiLineComment = L.sequence([
+        L.sequence('/*'),
+        L.repetition(multiLineCommentChar),
+        L.sequence('*/')
+    ]);
+    
+    var singleLineComment = L.sequence([
+        L.sequence('//'),
+        L.repetition( L.noneOf(LINE_TERMINATORS) )
+    ]);
+    
+    var comment = L.anyOf([
+        multiLineComment,
+        singleLineComment
     ]);
     
     function globOperator(reader) {
@@ -224,14 +245,14 @@ define(["./lexer"], function(L) {
     
     function _createLexer(reader /*, parser_fun, parser_obj*/) {
         var globbers = [
-            { token_type: 'eol_comment', globber: globEolComment },
-            { token_type: 'block_comment', globber: globBlockComment },
+            //{ token_type: 'eol_comment', globber: globEolComment },
+            { token_type: 'comment', globber: comment },
             { token_type: 'identifier', globber: identifier },
             { token_type: 'keyword', globber: keyword },
             { token_type: 'literal', globber: literal },
             { token_type: 'stringLiteral', globber: stringLiteral },
             { token_type: 'punctuator', globber: punctuator },
-            { token_type: 'operator', globber: globOperator },
+            //{ token_type: 'operator', globber: globOperator },
             { token_type: 'whitespace', globber: globWhitespace },
         ];
         var lexer = L.create(reader, globbers); // parser_fun, parser_obj);

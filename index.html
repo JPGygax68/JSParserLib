@@ -10,22 +10,25 @@
   <script type="text/javascript" src="require.js"></script>
   <script type="text/javascript" id="js_source">
     var myFunc = function() {
+      // This is a single-line comment
+      /**/
       /* This is my
        * multiline
        * comment.
-       */
+       **/
       var obj = null;
       var mybool = false;
       var s = "This is a string.", s2 = "Another string";
       var s3 = "This is a multiline \
 string";
+      var s4 = 'Single-quote string';
     }
   </script>
   <script type="text/javascript">
     $(function() {
       require.config( {
         urlArgs: "bust=" +  (new Date()).getTime()
-        //urlArgs: "bust=12"
+        //urlArgs: "bust=13"
       } );
       require(['./lexer/sourcereader', './parser/jsparser'], function(reading, parsing) {
         var source = $('#js_source').text();

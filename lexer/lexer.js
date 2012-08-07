@@ -166,22 +166,24 @@ define( function() {
     }
     
     function singleCharPredicate(pred) {
-        var real_pred;
+        if (pred === undefined) {
+            return function(c) { return true; }
+        }
         if (typeof pred === 'string') {
             var s = pred;
             if (pred.length === 0) {
-                real_pred = function(c) { return true; }
+                return function(c) { return true; }
             }
             else if (pred.length === 1) {
-                real_pred = function(c) { return c === s; };
+                return function(c) { return c === s; };
             }
             else {
-                real_pred = function(c) { return s.indexOf(c) >= 0; }
+                return function(c) { return s.indexOf(c) >= 0; }
             }
         }
-        else
-            real_pred = pred;
-        return real_pred;
+        else {
+            return pred;
+        }
     }
 
     function arrayPredicate(pred, invert) {
@@ -227,12 +229,17 @@ define( function() {
         
         /** Generates a rule that will consume a single character conforming
          *  to the specified predicate.
+         *  Instead of a predicate function, you can also specify a string,
+         *  in which case the generated rule will consume any character
+         *  contained in that string.
          */
         aChar: function(pred) {
-            if (typeof pred === 'string')
+            if (pred === undefined || typeof pred === 'string')
                 return makeAnyCharRule(pred, false)
-            else
+            else if (pred instanceof Function)
                 return function(reader) { return _singleChar(reader, pred); }
+            else
+                throw "Parser: aChar() called with non-supported predicate type";
         },
         
         /** This is the opposite of aChar(): it generates a rule consuming
@@ -334,6 +341,14 @@ define( function() {
             return function(reader) { return _filter(reader, rule, pred); }
         },
         
+        /** Generates a rule that consumes characters conforming to the specified
+         *  character predicate (or if char_pred is a string, characters contained
+         *  in that string) as long as the element conforms to the element 
+         *  predicate elem_pred.
+         *  This is intended for special cases, like the operators in a C-like
+         *  language, and especially those in JavaScript, where operators can have up
+         *  to 3 characters coming from a relatively small set.
+         */
         greedy: function(char_pred, elem_pred) {
             char_pred = singleCharPredicate(char_pred);
             elem_pred = convertPredicate(elem_pred);

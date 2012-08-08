@@ -17,6 +17,9 @@ define(["./parser"], function(P) {
                 
     var LINE_TERMINATORS = "\x0D\x0A"; // TODO: other line terminators
     
+    var DIGITS = '0123456789';
+    var HEX_DIGITS = '0123456789abcdefABCDEF';
+    
 	// Vocabulary 
 	
 	var unicodeLetter = P.aChar( function(c) {
@@ -97,7 +100,7 @@ define(["./parser"], function(P) {
         P.sequence( [decimalIntegerLiteral, P.optional(exponentPart)] )
     ]);
 
-    var hexDigit = P.anyOf("0123456789abcdefABCDEF");
+    var hexDigit = P.anyOf(HEX_DIGITS);
     
     var hexIntegerLiteral = P.sequence([
         P.anyOf('0'), P.anyOf("xX"), hexDigit, P.repetition(hexDigit)
@@ -125,10 +128,15 @@ define(["./parser"], function(P) {
         nonEscapeCharacter
     ]);
     
+    var hexEscapeSequence = P.sequence([ P.aChar('x'), hexDigit, hexDigit ]);
+    
+    var unicodeEscapeSequence = P.sequence([ P.aChar('u'), hexDigit, hexDigit, hexDigit, hexDigit ]);
+    
     var escapeSequence = P.anyOf([
         characterEscapeSequence,
-        P.sequence([ P.aChar('0'), P.aChar('0123456789') ])
-        // TODO: the rest...
+        P.sequence([ P.aChar('0'), P.aChar('0123456789') ]),
+        hexEscapeSequence,
+        unicodeEscapeSequence
     ]);
     
     var lineTerminatorSequence = P.anyOf([
@@ -187,18 +195,6 @@ define(["./parser"], function(P) {
         singleLineComment
     ]);
     
-    function globOperator(reader) {
-        var c = reader.peekNextChar();
-        var oper = '';
-        while ('*+-/=^!<>.?:&|%~'.indexOf(c) >= 0) {
-            oper += c;
-            reader.consumeNextChar();
-            c = reader.peekNextChar();
-        }
-        if (oper === '') return false;
-        return oper;
-    }
-    
     function globWhitespace(reader) {
         var ws = "";
         while (true) {
@@ -208,40 +204,6 @@ define(["./parser"], function(P) {
             reader.consumeNextChar();
         }
         return ws > '' ? ws : false;
-    }
-    
-	function globBlockComment(reader) {
-        var c;
-        if ((c = reader.peekNextChar()) != '/') return false;
-        reader.consumeNextChar();
-        if ((c = reader.peekNextChar()) != '*') return false;
-        reader.consumeNextChar();
-        var text = "/*";
-		var star = false;
-        while (true) {
-            c = reader.peekNextChar();
-			text += c;
-            reader.consumeNextChar();
-            if (c == '*') star = true;
-			else if (c == '/' && star) break;
-        }
-        return text;
-	}
-	
-    function globEolComment(reader) {
-        var c;
-        if ((c = reader.peekNextChar()) != '/') return false;
-        reader.consumeNextChar();
-        if ((c = reader.peekNextChar()) != '/') return false;
-        reader.consumeNextChar();
-        var text = "//";
-        while (true) {
-            c = reader.peekNextChar();
-            if (c == '\n') break;
-            text += c;
-            reader.consumeNextChar();
-        }
-        return text;
     }
     
     // This module returns a grammar.
@@ -254,7 +216,6 @@ define(["./parser"], function(P) {
         { token_type: 'literal', rule: literal },
         { token_type: 'stringLiteral', rule: stringLiteral },
         { token_type: 'punctuator', rule: punctuator },
-        //{ token_type: 'operator', rule: globOperator },
         { token_type: 'whitespace', rule: globWhitespace }
     ];
     

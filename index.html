@@ -30,12 +30,12 @@ string";
         urlArgs: "bust=" +  (new Date()).getTime()
         //urlArgs: "bust=13"
       } );
-      require(['./lexer/sourcereader', './parser/jsparser'], function(reading, parsing) {
+      require(['./parser/reader', './parser/parser', './parser/javascript'], function(Reader, Parser, JS) {
         var source = $('#js_source').text();
         console.log(source);
-        var reader = reading.create(source);
-        var parser = parsing.create(reader);
-        parser.parse(reader);
+        var reader = Reader.createReader(source);
+        var parser = Parser.createParser(reader, JS);
+        parser.parse();
       });
     });
   </script>

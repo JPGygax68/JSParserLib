@@ -1,7 +1,5 @@
 define( function() {
 
-    // TODO: rename this module (to "Parser"?)
-    
 	//--- Token class ---------------------------------------------------------
 	
 	/** Constructor.
@@ -31,7 +29,6 @@ define( function() {
     function _greedy(reader, char_pred, elem_pred) {
         reader.savePos();
         var text = '';
-        //console.log('_greedy: c = ' + reader.peekNextChar());
         while (char_pred(reader.peekNextChar())) {
             var text2 = text + reader.peekNextChar();
             if (!elem_pred(text2)) break;
@@ -133,32 +130,39 @@ define( function() {
         return text;
     }
     
-	//--- Lexer class ---------------------------------------------------------
-	
-	function Lexer(reader, globbers /*, parser_fun, parser_obj*/) {
-		this.reader = reader;
-		this.globbers = globbers;
-		/* this.parser_fun = parser_fun;
-		this.parser_obj = parser_obj; */
-	}
+    //--- Parser class --------------------------------------------------------
+    
+    function Parser(reader, grammar) {
+        //this.reader = reader;
+        //this.grammar = grammar;
+        
+        var that = this;
+        
+        /**	Uses the grammar rules to parse tokens from the character stream 
+         *  obtained through the Reader.
+         *  Returns a token object (composed of token_type and text) if one of
+         *  the rules successfully recognized a token; false otherwise.
+         */
+        this.readNextElement = function() {
+            for (var i = 0; i < grammar.length; i ++) {
+                reader.savePos();
+                var rule = grammar[i].rule;
+                var type = grammar[i].token_type;
+                var text = rule(reader);
+                if (text) return new Token(type, text);
+                reader.restorePos();
+            }
+            return false;
+        }
 
-	/**	Uses the "globber" functions to parse tokens from the character
-	 *  stream obtained through the Reader.
-	 *  Returns a token object (composed of token_type and text) if one of
-	 *  the globbers successfully recognized a token; false otherwise.
-	 */
-	Lexer.prototype.readNextElement = function() {
-		for (var i = 0; i < this.globbers.length; i ++) {
-			this.reader.savePos();
-			var globber = this.globbers[i].globber;
-			var type = this.globbers[i].token_type;
-			var text = globber(this.reader);
-			if (text) return new Token(type, text);
-			this.reader.restorePos();
-		}
-		return false;
-	}
-
+    }
+    
+    Parser.prototype.parse = function() {
+        var elem;
+        while ((elem = this.readNextElement()) !== false) {
+        }
+    }
+    
     //--- Helper functions ----------------------------------------------------
 
     function invertPredicate(pred) {
@@ -220,9 +224,10 @@ define( function() {
 	//--- PUBLIC API ----------------------------------------------------------
 	
 	return {
-		/** Creates a Lexer object. */
-		create: function(reader, globbers /*, parser_fun, parser_obj*/) { 
-			return new Lexer(reader, globbers /*, parser_fun, parser_obj*/); 
+		/** Creates a Parser object. 
+         */
+		createParser: function(reader, grammar) { 
+			return new Parser(reader, grammar);
         },
             
         //--- Rule factories --------------------------------------------------

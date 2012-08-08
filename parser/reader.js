@@ -76,7 +76,7 @@ define(["./charclasses"], function(CharClasses) {
 	// PUBLIC API
 	
 	return {
-		create: function(text) { return new SourceReader(text); }
+		createReader: function(text) { return new SourceReader(text); }
 	}
 });
 	

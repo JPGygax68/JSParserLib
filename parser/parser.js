@@ -173,7 +173,7 @@ define( function() {
         if (pred === undefined) {
             return function(c) { return true; }
         }
-        if (typeof pred === 'string') {
+        else if (typeof pred === 'string') {
             var s = pred;
             if (pred.length === 0) {
                 return function(c) { return true; }
@@ -239,10 +239,8 @@ define( function() {
          *  contained in that string.
          */
         aChar: function(pred) {
-            if (pred === undefined || typeof pred === 'string')
+            if (pred === undefined || typeof pred === 'string' || pred instanceof Function)
                 return makeAnyCharRule(pred, false)
-            else if (pred instanceof Function)
-                return function(reader) { return _singleChar(reader, pred); }
             else
                 throw "Parser: aChar() called with non-supported predicate type";
         },
@@ -251,10 +249,8 @@ define( function() {
          *  any character *not* in "chars".
          */
         noneOf: function(chars) { 
-            if (typeof chars === 'string') {
-                var pred = invertPredicate(singleCharPredicate(chars));
-                return function(reader) { return _singleChar(reader, pred); }
-            }
+            if (typeof chars === 'string')
+                return makeAnyCharRule(chars, true);
             else
                 throw 'Parser: noneOf() called with non-supported "chars" argument';
         },
@@ -262,10 +258,8 @@ define( function() {
         /** Similar to noneOf(), but for a single character.
          */
         not: function(char_) {
-            if (typeof char_ === 'string' && char_.length === 1) {
-                var pred = invertPredicate(singleCharPredicate(char_));
-                return function(reader) { return _singleChar(reader, pred); }
-            }
+            if (typeof char_ === 'string' && char_.length === 1)
+                return makeAnyCharRule(char_, true)
             else
                 throw 'Parser: not() called with non-supported "rules" argument: ' + char_;
         },
@@ -277,13 +271,10 @@ define( function() {
          *  case aChar() could be used interchangeably).
          */
         anyOf: function(rules) {
-            if (typeof rules === 'string') {
-                var pred = singleCharPredicate(rules);
-                return function(reader) { return _singleChar(reader, pred); }
-            }
-            else if (rules instanceof Array) {
+            if (typeof rules === 'string')
+                return makeAnyCharRule(rules)
+            else if (rules instanceof Array)
                 return function(reader) { return _anyOf(reader, rules); }
-            }
             else
                 throw 'Parser: anyOf() called with non-supported "rules" argument';
         },

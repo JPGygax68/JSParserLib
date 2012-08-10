@@ -1,19 +1,5 @@
 define( function() {
 
-	//--- Token class ---------------------------------------------------------
-	
-	/** Constructor.
-	 */
-	function Token(type, text) {
-		this.type = type;
-		this.text = text;
-        console.log(type + ': ' + text.trim());
-	}
-	
-	Token.prototype.is = function(type, text) {
-		return this.type == type && (text === undefined || this.text === text);
-	}
-	
 	//--- Building blocks -----------------------------------------------------
 	
     // TODO: lookahead predicate
@@ -36,7 +22,7 @@ define( function() {
             text = text2;
         }
         reader.dropLastMark();
-        return text;
+        return text.length > 0 ? text : false;
     }
     
     /** Not used at the moment.
@@ -132,35 +118,27 @@ define( function() {
     
     //--- Parser class --------------------------------------------------------
     
-    function Parser(reader, grammar) {
+    function Parser(reader, root_rule) {
         //this.reader = reader;
         //this.grammar = grammar;
         
-        var that = this;
+        //var that = this;
         
-        /**	Uses the grammar rules to parse tokens from the character stream 
-         *  obtained through the Reader.
-         *  Returns a token object (composed of token_type and text) if one of
-         *  the rules successfully recognized a token; false otherwise.
-         */
         this.readNextElement = function() {
-            for (var i = 0; i < grammar.length; i ++) {
-                reader.savePos();
-                var rule = grammar[i].rule;
-                var type = grammar[i].token_type;
-                var text = rule(reader);
-                if (text) return new Token(type, text);
-                reader.restorePos();
-            }
-            return false;
+            return root_rule(reader);
         }
-
     }
     
     Parser.prototype.parse = function() {
         var elem;
+        var i = 0;
+        console.log('Starting to parse...');
         while ((elem = this.readNextElement()) !== false) {
+            //console.log('Element #'+i+': ', elem.trim() );
+            i += 1;
+            if (i > 100000) throw "forced stop";
         }
+        console.log(i + ' elements read.');
     }
     
     //--- Helper functions ----------------------------------------------------
@@ -227,8 +205,8 @@ define( function() {
 	return {
 		/** Creates a Parser object. 
          */
-		createParser: function(reader, grammar) { 
-			return new Parser(reader, grammar);
+		createParser: function(reader, root_rule) { 
+			return new Parser(reader, root_rule);
         },
             
         //--- Rule factories --------------------------------------------------

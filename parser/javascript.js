@@ -7,6 +7,7 @@ define(["./parser"], function(P) {
     var PUNCTUATORS = ("{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % "
                      + "++ -- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= "
                      + "<<= >>= >>>= &= |= ^=").split(' ');
+                     
     var PUNCT_CHARS = (function() { 
         var s = '', c, i, j;
         for (i = 0; i < PUNCTUATORS.length; i++)
@@ -114,14 +115,6 @@ define(["./parser"], function(P) {
         hexIntegerLiteral
     ]);
     
-    var literal = P.anyOf([
-        nullLiteral,
-        booleanLiteral,
-        numericLiteral
-        //stringLiteral,
-        //regularExpressionLiteral
-    ]);
-
     var singleEscapeCharacter = P.anyOf('\'"\\bfnrtv');
     
     var nonEscapeCharacter = P.noneOf('\'"\\bfnrtv');
@@ -143,10 +136,8 @@ define(["./parser"], function(P) {
     ]);
     
     var lineTerminatorSequence = P.anyOf([
-        P.aChar('\x0A'),
+        P.aChar('\x0A\u2028\u2029'),
         P.sequence([ P.aChar('\x0D'), P.lookAhead(P.not('\x0A')) ]),
-        // TODO: LS
-        // TODO: PS
         P.sequence('\x0D\x0A')        
     ]);
     
@@ -175,6 +166,14 @@ define(["./parser"], function(P) {
             P.repetition(singleStringCharacter),
             P.anyOf("'")
         ])
+    ]);
+
+    var literal = P.anyOf([
+        nullLiteral,
+        booleanLiteral,
+        numericLiteral,
+        stringLiteral,
+        //regularExpressionLiteral
     ]);
 
     var multiLineCommentChar = P.anyOf([
@@ -209,7 +208,7 @@ define(["./parser"], function(P) {
         stringLiteral
     ]);
     
-    var inputElementDiv = P.anyOf([
+    var _inputElementDiv = P.anyOf([
         whiteSpace,
         lineTerminator,
         comment,
@@ -217,28 +216,11 @@ define(["./parser"], function(P) {
         punctuator
     ]);
     
-    function globWhitespace(reader) {
-        var ws = "";
-        while (true) {
-            var c = reader.peekNextChar();
-            if (' \t\n'.indexOf(c) < 0) break;
-            ws += c;
-            reader.consumeNextChar();
-        }
-        return ws > '' ? ws : false;
+    /** This module returns the top-level elements of the JavaScript lexical grammar.
+     */
+    
+    return {
+        inputElementDiv: _inputElementDiv
     }
-    
-    // This module returns a grammar.
-    
-    return [
-        //{ token_type: 'eol_comment', rule: globEolComment },
-        { token_type: 'comment', rule: comment },
-        { token_type: 'identifier', rule: identifier },
-        { token_type: 'keyword', rule: keyword },
-        { token_type: 'literal', rule: literal },
-        { token_type: 'stringLiteral', rule: stringLiteral },
-        { token_type: 'punctuator', rule: punctuator },
-        { token_type: 'whitespace', rule: globWhitespace }
-    ];
     
 } );

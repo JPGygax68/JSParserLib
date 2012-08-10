@@ -15,7 +15,7 @@
       /* This is my
        * multiline
        * comment.
-       **/
+       */
       var obj = null;
       var mybool = false;
       var s = "This is a string.", s2 = "Another string";
@@ -29,13 +29,13 @@ string";
     $(function() {
       require.config( {
         urlArgs: "bust=" +  (new Date()).getTime()
-        //urlArgs: "bust=13"
+        //urlArgs: "bust=14"
       } );
       require(['./parser/reader', './parser/parser', './parser/javascript'], function(Reader, Parser, JS) {
         var source = $('#js_source').text();
-        console.log(source);
+        //var source = "15";
         var reader = Reader.createReader(source);
-        var parser = Parser.createParser(reader, JS);
+        var parser = Parser.createParser(reader, JS.inputElementDiv);
         parser.parse();
       });
     });

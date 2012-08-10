@@ -218,7 +218,8 @@ define( function() {
     function makeAnyCharRule(chars, invert) {
         var pred = singleCharPredicate(chars, invert);
         if (invert) pred = invertPredicate(pred);
-        return function(reader) { return _singleChar(reader, pred); };
+        var func = function(reader) { return _singleChar(reader, pred); };
+        return func;
     }
     
 	//--- PUBLIC API ----------------------------------------------------------

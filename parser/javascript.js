@@ -15,7 +15,10 @@ define(["./parser"], function(P) {
         return s;
     })();
                 
-    var LINE_TERMINATORS = "\x0D\x0A"; // TODO: other line terminators
+    var WHITESPACE_CHARS = '\u0009\u000B\u000C \u00A0\uFEFF\u1680\u180E\u2000\u2001\u2002\u2003\u2004'
+                          +'\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF';
+                          
+    var LINE_TERMINATORS = "\x0D\x0A\u2028\u2029";
     
     var DIGITS = '0123456789';
     var HEX_DIGITS = '0123456789abcdefABCDEF';
@@ -193,6 +196,25 @@ define(["./parser"], function(P) {
     var comment = P.anyOf([
         multiLineComment,
         singleLineComment
+    ]);
+    
+    var whiteSpace = P.aChar(WHITESPACE_CHARS);
+    
+    var lineTerminator = P.aChar(LINE_TERMINATORS);
+    
+    var token = P.anyOf([
+        identifierName,
+        punctuator,
+        numericLiteral,
+        stringLiteral
+    ]);
+    
+    var inputElementDiv = P.anyOf([
+        whiteSpace,
+        lineTerminator,
+        comment,
+        token,
+        punctuator
     ]);
     
     function globWhitespace(reader) {

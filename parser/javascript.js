@@ -178,7 +178,7 @@ define(["./parser"], function(P) {
 
     var multiLineCommentChar = P.anyOf([
         P.not('*'),
-        P.sequence([ P.aChar('*'), P.lookAhead(P.not('/')) ]),
+        P.sequence([ P.aChar('*'), P.lookAhead(P.not('/')) ])
     ]);
     
     var multiLineComment = P.sequence([

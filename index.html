@@ -11,11 +11,9 @@
   <script type="text/javascript" id="js_source">
     var myFunc = function() {
       // This is a single-line comment
-      /**/
-      /* This is my
-       * multiline
-       * comment.
-       */
+      /* Multiline comment 
+       * 2nd line
+       **/
       var obj = null;
       var mybool = false;
       var s = "This is a string.", s2 = "Another string";
@@ -27,16 +25,24 @@ string";
   </script>
   <script type="text/javascript">
     $(function() {
+      console.log('Ready');
       require.config( {
         urlArgs: "bust=" +  (new Date()).getTime()
-        //urlArgs: "bust=14"
+        //urlArgs: "bust=15"
       } );
       require(['./parser/reader', './parser/parser', './parser/javascript'], function(Reader, Parser, JS) {
         var source = $('#js_source').text();
-        //var source = "15";
         var reader = Reader.createReader(source);
         var parser = Parser.createParser(reader, JS.inputElementDiv);
-        parser.parse();
+        var elem;
+        var i = 0;
+        console.log('Starting to parse...');
+        while ((elem = parser.getNextElement()) !== false) {
+            console.log('Element #'+i+': ', elem.toString().trim() );
+            i += 1;
+            if (i > 1000) throw "forced stop";
+        }
+        console.log(i + ' elements obtained.');
       });
     });
   </script>

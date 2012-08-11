@@ -1,5 +1,14 @@
 define( function() {
 
+    function Element(rule, content) {
+        this.rule = rule;
+        this.content = content;
+    }
+    
+    Element.prototype.toString = function() {
+        if (this.content instanceof Element) return this.content.toString();
+    }
+    
 	//--- Building blocks -----------------------------------------------------
 	
     // TODO: lookahead predicate
@@ -25,9 +34,7 @@ define( function() {
         return text.length > 0 ? text : false;
     }
     
-    /** Not used at the moment.
-     */
-	function _anyOf_non_greedy(reader, rules) {
+	function _anyOf(reader, rules) {
 		for (var i = 0; i < rules.length; i ++) {
 			var text = rules[i](reader);
 			if (text !== false) return text;
@@ -35,7 +42,9 @@ define( function() {
 		return false;
 	}
     
-    function _anyOf(reader, rules) {
+    /** Not used at the moment.
+     */
+    function _anyOf__greedy(reader, rules) {
         var result = false;
         var end_pos;
         for (var i = 0; i < rules.length; i ++) {

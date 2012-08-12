@@ -10,11 +10,12 @@
   <script type="text/javascript" src="require.js"></script>
   <style type="text/css">
     .code.javascript > .keyWord { color: blue; }
-    .code.javascript > .reservedWord { color: blue; font-style: italic; }
+    .code.javascript > .reservedWord { color: darkblue; font-style: italic; }
     .code.javascript > .identifier { color: black; }
     .code.javascript > .comment { color: green; }
     .code.javascript > .punctuator { color: orange; }
     .code.javascript > .stringLiteral { color: grey; }
+    .code.javascript > .numericLiteral { color: red; }
   </style>
   <script type="text/javascript" id="js_source">
     var myFunc = function() {
@@ -29,6 +30,7 @@
 string";
       var s4 = 'Single-quote string';
       var s5 = 'Escape sequences: \0 \xaa \u1234'; 
+      var i1 = 2.57;
     }
   </script>
   <script type="text/javascript">

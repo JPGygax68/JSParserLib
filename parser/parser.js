@@ -111,7 +111,7 @@ define( function() {
 	
     function _optional(rule, reader, sub_rule) {
         var sub_elem = sub_rule(sub_rule, reader);
-        if (sub_elem === false) return "";
+        if (sub_elem === false) return new Element(rule, "");
         else return new Element(rule, sub_elem);
     }
     

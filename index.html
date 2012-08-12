@@ -38,7 +38,7 @@ string";
         var i = 0;
         console.log('Starting to parse...');
         while ((elem = parser.getNextElement()) !== false) {
-            console.log('Element #'+i+': ', elem.toString().trim() );
+            console.log('Element #'+i+': "' + elem.getText().trim() + '"' + ' (' + elem.getType() + ')' );
             i += 1;
             if (i > 1000) throw "forced stop";
         }

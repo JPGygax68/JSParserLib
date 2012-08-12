@@ -3,12 +3,18 @@ define( function() {
     function Element(rule, content) {
         this.rule = rule;
         this.content = content;
-        //console.log(this.content.toString());
     }
     
-    Element.prototype.toString = function() {
-        if (this.content instanceof Element) return this.content.toString();
+    Element.prototype.getText = function() {
+        if (this.content instanceof Element) {
+            return this.content.getText();
+        }
         else return this.content;
+    }
+    
+    Element.prototype.getType = function() {
+        if (typeof this.content === 'string') return this.rule.elem_name;
+        else return this.content.getType();
     }
     
 	//--- Building blocks -----------------------------------------------------
@@ -53,7 +59,7 @@ define( function() {
             var sub_elem = sub_rules[i](sub_rules[i], reader);
             if (sub_elem !== false) {
                 // TODO: better way to compare match "quality" ?
-                if (result === false || sub_elem.toString().length > result.toString().length) {
+                if (result === false || sub_elem.getText().length > result.getText().length) {
                     result = new Element(rule, text);
                     end_pos = reader.getCurrentPos();
                 }
@@ -95,7 +101,7 @@ define( function() {
 		while (true) {
 			var sub_elem = sub_rule(sub_rule, reader);
 			if (sub_elem === false) return new Element(rule, text);
-			text += sub_elem;
+			text += sub_elem.getText();
 		}
         throw 'Parser._repetition(): must not arrive at end!';
 	}
@@ -112,7 +118,7 @@ define( function() {
 		for (var i = 0; i < sub_rules.length; i ++) {
 			var sub_elem = sub_rules[i](sub_rules[i], reader);
 			if (sub_elem === false) { reader.restorePos(); return false; }
-			text += sub_elem.toString();
+			text += sub_elem.getText();
 		}
 		reader.dropLastMark();
 		return new Element(rule, text);
@@ -121,7 +127,7 @@ define( function() {
     function _filter(rule, reader, sub_rule, pred) {
         reader.savePos();
         var sub_elem = sub_rule(sub_rule, reader);
-        if (sub_elem === false || !pred(sub_elem.toString())) { 
+        if (sub_elem === false || !pred(sub_elem.getText())) { 
             reader.restorePos(); return false; }
         reader.dropLastMark(); 
         return new Element(rule, sub_elem);
@@ -186,15 +192,17 @@ define( function() {
         else {
             real_pred = pred;
         }
-        return (invert ? invertedPred(real_pred) : real_pred);
+        return (invert ? invertPredicate(real_pred) : real_pred);
     }
 
     function finalizeRule(rule, name, options) {
-        if (name !== undefined) rule.name = name;
+        if (name !== undefined) {
+            rule.elem_name = name;
+        }
         if (options !== undefined) {
-            for (var name in options) {
-                if (name in rule) throw "invalid rule option name (reserved): " + name
-                rule[name] = options[name];
+            for (var key in options) {
+                if (key in rule) throw "invalid rule option name (reserved): " + key;
+                rule[key] = options[key];
             }
         }
         return rule;

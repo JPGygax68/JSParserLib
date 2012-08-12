@@ -52,15 +52,15 @@ define(["./parser"], function(P) {
     var identifierName = P.sequence( [
         identifierStart,
         P.repetition(identifierPart)
-    ]);
+    ], 'IdentifierName');
 	
     var keyword = P.filter(identifierName, function(text) {
         return (KEYWORDS.indexOf(text) >= 0);
     });
     
-    var nullLiteral = P.filter(identifierName, "null");
+    var nullLiteral = P.filter(identifierName, "null", "NullLiteral");
 
-    var booleanLiteral = P.filter(identifierName, ["true", "false"]);
+    var booleanLiteral = P.filter(identifierName, ["true", "false"], "BooleanLiteral");
     
     var reservedWord = P.anyOf([
         keyword,
@@ -72,7 +72,8 @@ define(["./parser"], function(P) {
     
     var punctuator = P.string( 
         function(c) { return PUNCT_CHARS.indexOf(c) >= 0; }, 
-        function(text) { return PUNCTUATORS.indexOf(text) >= 0; }
+        function(text) { return PUNCTUATORS.indexOf(text) >= 0; },
+        "Punctuator"
     );
     
     var decimalDigits = P.repetition(
@@ -197,7 +198,7 @@ define(["./parser"], function(P) {
         singleLineComment
     ]);
     
-    var whiteSpace = P.aChar(WHITESPACE_CHARS);
+    var whiteSpace = P.aChar(WHITESPACE_CHARS, 'WhiteSpace');
     
     var lineTerminator = P.aChar(LINE_TERMINATORS);
     
@@ -206,7 +207,7 @@ define(["./parser"], function(P) {
         punctuator,
         numericLiteral,
         stringLiteral
-    ]);
+    ], "Token");
     
     var _inputElementDiv = P.anyOf([
         whiteSpace,
@@ -214,7 +215,7 @@ define(["./parser"], function(P) {
         comment,
         token,
         punctuator
-    ]);
+    ], "InputElementDiv");
     
     /** This module returns the top-level elements of the JavaScript lexical grammar.
      */

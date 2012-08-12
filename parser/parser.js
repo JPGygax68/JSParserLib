@@ -22,12 +22,12 @@ define( function() {
     /** Consume conforming characters greedily as long as the element conforms.
      */
     // TODO: remove savePos() etc. ?
-    function _greedy(rule, reader, char_pred, elem_pred) {
+    function _string(rule, reader, char_pred, elem_pred) {
         reader.savePos();
         var text = '';
         while (char_pred(reader.peekNextChar())) {
             var text2 = text + reader.peekNextChar();
-            if (!elem_pred(text2)) break;
+            if (elem_pred && !elem_pred(text2)) break;
             reader.consumeNextChar();
             text = text2;
         }
@@ -320,10 +320,10 @@ define( function() {
          *  language, and especially those in JavaScript, where operators can have up
          *  to 3 characters coming from a relatively small set.
          */
-        greedy: function(char_pred, elem_pred) {
+        string: function(char_pred, elem_pred) {
             char_pred = singleCharPredicate(char_pred);
             elem_pred = convertPredicate(elem_pred);
-            return function(rule, reader) { return _greedy(rule, reader, char_pred, elem_pred); }
+            return function(rule, reader) { return _string(rule, reader, char_pred, elem_pred); }
         }
 	}
 });

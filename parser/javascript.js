@@ -70,7 +70,7 @@ define(["./parser"], function(P) {
         
     var identifier = P.butNot(identifierName, reservedWord);
     
-    var punctuator = P.greedy( 
+    var punctuator = P.string( 
         function(c) { return PUNCT_CHARS.indexOf(c) >= 0; }, 
         function(text) { return PUNCTUATORS.indexOf(text) >= 0; }
     );
@@ -138,7 +138,7 @@ define(["./parser"], function(P) {
     var lineTerminatorSequence = P.anyOf([
         P.aChar('\x0A\u2028\u2029'),
         P.sequence([ P.aChar('\x0D'), P.lookAhead(P.not('\x0A')) ]),
-        P.sequence('\x0D\x0A')        
+        P.string('\x0D\x0A')        
     ]);
     
     var lineContinuation = P.sequence([ P.anyOf('\\'), lineTerminatorSequence ]);
@@ -182,13 +182,13 @@ define(["./parser"], function(P) {
     ]);
     
     var multiLineComment = P.sequence([
-        P.sequence('/*'),
+        P.string('/*'),
         P.repetition(multiLineCommentChar),
-        P.sequence('*/')
+        P.string('*/')
     ]);
     
     var singleLineComment = P.sequence([
-        P.sequence('//'),
+        P.string('//'),
         P.repetition( P.noneOf(LINE_TERMINATORS) )
     ]);
     

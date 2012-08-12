@@ -25,203 +25,199 @@ define(["./parser"], function(P) {
     var HEX_DIGITS = '0123456789abcdefABCDEF';
     
 	// Vocabulary 
-	
-	var unicodeLetter = P.aChar( function(c) {
+
+    var g = {};
+    
+    g.unicodeLetter = P.aChar( function(c) {
         return (c >= 'A' && c <= 'Z') 
             || (c >= 'a' && c <= 'z');
         // TODO: actual support for Unicode!
     });
-	
-	var unicodeDigit = P.aChar( function(c) {
-		return (c >= '0' && c <= '9'); // TODO: real Unicode
-	});
-	
-	var identifierStart = P.anyOf( [
-        unicodeLetter,
+        
+    g.unicodeDigit = P.aChar( function(c) {
+        return (c >= '0' && c <= '9'); // TODO: real Unicode
+    });
+
+    g.identifierStart = P.anyOf( [
+        g.unicodeLetter,
         P.anyOf('$_')
-    ]);
-	
-	var identifierPart = P.anyOf( [
-        identifierStart,
-        //|| unicodeCombininingMark(c) // TODO
-        unicodeDigit
-        //|| unicodeConnectorPunctuation(c) // TODO
+    ]),
+
+    g.identifierPart = P.anyOf( [
+        g.identifierStart,
+        //|| g.unicodeCombininingMark(c) // TODO
+        g.unicodeDigit
+        //|| g.unicodeConnectorPunctuation(c) // TODO
         //|| TODO: zero-width non-joiner, zero-width joiner
+    ]),
+
+    g.identifierName = P.sequence( [
+        g.identifierStart,
+        P.repetition(g.identifierPart)
     ]);
 
-    var identifierName = P.sequence( [
-        identifierStart,
-        P.repetition(identifierPart)
-    ], 'IdentifierName');
-	
-    var keyword = P.filter(identifierName, function(text) {
+    g.keyword = P.filter(g.identifierName, function(text) {
         return (KEYWORDS.indexOf(text) >= 0);
     });
-    
-    var nullLiteral = P.filter(identifierName, "null", "NullLiteral");
 
-    var booleanLiteral = P.filter(identifierName, ["true", "false"], "BooleanLiteral");
+    g.nullLiteral = P.filter(g.identifierName, "null", "NullLiteral");
+
+    g.booleanLiteral = P.filter(g.identifierName, ["true", "false"], "BooleanLiteral");
+
+    g.reservedWord = P.anyOf([
+        g.keyword,
+        g.nullLiteral,
+        //g.futureReservedWord,
+        g.booleanLiteral 
+    ]);
     
-    var reservedWord = P.anyOf([
-        keyword,
-        nullLiteral,
-        //futureReservedWord,
-        booleanLiteral ]);
-        
-    var identifier = P.butNot(identifierName, reservedWord);
-    
-    var punctuator = P.string( 
+    g.identifier = P.butNot(g.identifierName, g.reservedWord);
+
+    g.punctuator = P.string( 
         function(c) { return PUNCT_CHARS.indexOf(c) >= 0; }, 
-        function(text) { return PUNCTUATORS.indexOf(text) >= 0; },
-        "Punctuator"
+        function(text) { return PUNCTUATORS.indexOf(text) >= 0; }
     );
-    
-    var decimalDigits = P.repetition(
+
+    g.decimalDigits = P.repetition(
         P.anyOf("0123456789")
     );
-    
-    var decimalIntegerLiteral = P.anyOf([
+
+    g.decimalIntegerLiteral = P.anyOf([
         P.anyOf('0'),
         P.sequence([
             P.anyOf("12345789"),
-            decimalDigits
+            g.decimalDigits
         ])
     ]);
-    
-    var signedInteger = P.anyOf([
-        P.sequence( [P.anyOf("+-"), decimalDigits] ),
-        decimalDigits
-    ]);
-    
-    var exponentPart = P.sequence([
-        P.anyOf('eE'), signedInteger
-    ]);
-    
-    var decimalLiteral = P.anyOf([
-        P.sequence([
-            decimalIntegerLiteral, P.anyOf('.'), P.optional(decimalDigits), P.optional(exponentPart)
-        ]),
-        P.sequence( [P.anyOf('.'), decimalDigits, P.optional(exponentPart)] ),
-        P.sequence( [decimalIntegerLiteral, P.optional(exponentPart)] )
+
+    g.signedInteger = P.anyOf([
+        P.sequence( [P.anyOf("+-"), g.decimalDigits] ),
+        g.decimalDigits
     ]);
 
-    var hexDigit = P.anyOf(HEX_DIGITS);
-    
-    var hexIntegerLiteral = P.sequence([
-        P.anyOf('0'), P.anyOf("xX"), hexDigit, P.repetition(hexDigit)
+    g.exponentPart = P.sequence([
+        P.anyOf('eE'), g.signedInteger
     ]);
-    
-    var numericLiteral = P.anyOf([
-        decimalLiteral,
-        hexIntegerLiteral
+
+    g.decimalLiteral = P.anyOf([
+        P.sequence([
+            g.decimalIntegerLiteral, P.anyOf('.'), P.optional(g.decimalDigits), P.optional(g.exponentPart)
+        ]),
+        P.sequence( [P.anyOf('.'), g.decimalDigits, P.optional(g.exponentPart)] ),
+        P.sequence( [g.decimalIntegerLiteral, P.optional(g.exponentPart)] )
     ]);
+
+    g.hexDigit = P.anyOf(HEX_DIGITS),
     
-    var singleEscapeCharacter = P.anyOf('\'"\\bfnrtv');
-    
-    var nonEscapeCharacter = P.noneOf('\'"\\bfnrtv');
-    
-    var characterEscapeSequence = P.anyOf([
-        singleEscapeCharacter,
-        nonEscapeCharacter
+    g.hexIntegerLiteral = P.sequence([
+        P.anyOf('0'), P.anyOf("xX"), g.hexDigit, P.repetition(g.hexDigit) // TODO: use "string" instead ?
     ]);
+
+    g.numericLiteral = P.anyOf([
+        g.decimalLiteral,
+        g.hexIntegerLiteral
+    ]);
+
+    g.singleEscapeCharacter = P.anyOf('\'"\\bfnrtv');
     
-    var hexEscapeSequence = P.sequence([ P.aChar('x'), hexDigit, hexDigit ]);
+    g.nonEscapeCharacter = P.noneOf('\'"\\bfnrtv');
     
-    var unicodeEscapeSequence = P.sequence([ P.aChar('u'), hexDigit, hexDigit, hexDigit, hexDigit ]);
+    g.characterEscapeSequence = P.anyOf([
+        g.singleEscapeCharacter,
+        g.nonEscapeCharacter
+    ]);
+
+    g.hexEscapeSequence = P.sequence([ P.aChar('x'), g.hexDigit, g.hexDigit ]);
     
-    var escapeSequence = P.anyOf([
-        characterEscapeSequence,
+    g.unicodeEscapeSequence = P.sequence([ P.aChar('u'), g.hexDigit, g.hexDigit, g.hexDigit, g.hexDigit ]);
+
+    g.escapeSequence = P.anyOf([
+        g.characterEscapeSequence,
         P.sequence([ P.aChar('0'), P.aChar('0123456789') ]),
-        hexEscapeSequence,
-        unicodeEscapeSequence
+        g.hexEscapeSequence,
+        g.unicodeEscapeSequence
     ]);
     
-    var lineTerminatorSequence = P.anyOf([
+    g.lineTerminatorSequence = P.anyOf([
         P.aChar('\x0A\u2028\u2029'),
         P.sequence([ P.aChar('\x0D'), P.lookAhead(P.not('\x0A')) ]),
         P.string('\x0D\x0A')        
     ]);
     
-    var lineContinuation = P.sequence([ P.anyOf('\\'), lineTerminatorSequence ]);
+    g.lineContinuation = P.sequence([ P.anyOf('\\'), g.lineTerminatorSequence ]);
     
-    var doubleStringCharacter = P.anyOf([
+    g.doubleStringCharacter = P.anyOf([
         P.noneOf('"\\'+LINE_TERMINATORS),
-        P.sequence([ P.anyOf('\\'), escapeSequence ]),
-        lineContinuation
+        P.sequence([ P.anyOf('\\'), g.escapeSequence ]),
+        g.lineContinuation
     ]);
     
-    var singleStringCharacter = P.anyOf([
+    g.singleStringCharacter = P.anyOf([
         P.noneOf("'\\"+LINE_TERMINATORS),
-        P.sequence([ P.anyOf('\\'), escapeSequence ]),
-        lineContinuation
+        P.sequence([ P.anyOf('\\'), g.escapeSequence ]),
+        g.lineContinuation
     ]);
-    
-    var stringLiteral = P.anyOf([
+
+    g.stringLiteral = P.anyOf([
         P.sequence([
             P.anyOf('"'),
-            P.repetition(doubleStringCharacter),
+            P.repetition(g.doubleStringCharacter),
             P.anyOf('"')
         ]),
         P.sequence([
             P.anyOf("'"),
-            P.repetition(singleStringCharacter),
+            P.repetition(g.singleStringCharacter),
             P.anyOf("'")
         ])
     ]);
 
-    var literal = P.anyOf([
-        nullLiteral,
-        booleanLiteral,
-        numericLiteral,
-        stringLiteral,
-        //regularExpressionLiteral
+    g.literal = P.anyOf([
+        g.nullLiteral,
+        g.booleanLiteral,
+        g.numericLiteral,
+        g.stringLiteral,
+        //g.regularExpressionLiteral
     ]);
 
-    var multiLineCommentChar = P.anyOf([
+    g.multiLineCommentChar = P.anyOf([
         P.not('*'),
         P.sequence([ P.aChar('*'), P.lookAhead(P.not('/')) ])
     ]);
     
-    var multiLineComment = P.sequence([
+    g.multiLineComment = P.sequence([
         P.string('/*'),
-        P.repetition(multiLineCommentChar),
+        P.repetition(g.multiLineCommentChar),
         P.string('*/')
-    ]);
+    ]),
     
-    var singleLineComment = P.sequence([
+    g.singleLineComment = P.sequence([
         P.string('//'),
         P.repetition( P.noneOf(LINE_TERMINATORS) )
     ]);
     
-    var comment = P.anyOf([
-        multiLineComment,
-        singleLineComment
+    g.comment = P.anyOf([
+        g.multiLineComment,
+        g.singleLineComment
+    ]);
+
+    g.whiteSpace = P.aChar(WHITESPACE_CHARS);
+    
+    g.lineTerminator = P.aChar(LINE_TERMINATORS);
+    
+    g.token = P.anyOf([
+        g.identifierName,
+        g.punctuator,
+        g.numericLiteral,
+        g.stringLiteral
     ]);
     
-    var whiteSpace = P.aChar(WHITESPACE_CHARS, 'WhiteSpace');
+    g.inputElementDiv = P.anyOf([
+        g.whiteSpace,
+        g.lineTerminator,
+        g.comment,
+        g.token,
+        g.punctuator
+    ]);
     
-    var lineTerminator = P.aChar(LINE_TERMINATORS);
-    
-    var token = P.anyOf([
-        identifierName,
-        punctuator,
-        numericLiteral,
-        stringLiteral
-    ], "Token");
-    
-    var _inputElementDiv = P.anyOf([
-        whiteSpace,
-        lineTerminator,
-        comment,
-        token,
-        punctuator
-    ], "InputElementDiv");
-    
-    /** This module returns the top-level elements of the JavaScript lexical grammar.
-     */
-    
-    return {
-        inputElementDiv: _inputElementDiv
-    }
-    
+    return P.finalizeGrammar(g); // return the grammar
 } );

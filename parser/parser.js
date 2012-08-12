@@ -13,7 +13,7 @@ define( function() {
     }
     
     Element.prototype.getType = function() {
-        if (typeof this.content === 'string') return this.rule.elem_name;
+        if (typeof this.content === 'string') return this.rule.rule_name;
         else return this.content.getType();
     }
     
@@ -195,10 +195,7 @@ define( function() {
         return (invert ? invertPredicate(real_pred) : real_pred);
     }
 
-    function finalizeRule(rule, name, options) {
-        if (name !== undefined) {
-            rule.elem_name = name;
-        }
+    function finalizeRule(rule, options) {
         if (options !== undefined) {
             for (var key in options) {
                 if (key in rule) throw "invalid rule option name (reserved): " + key;
@@ -211,10 +208,10 @@ define( function() {
     /** Generates a rule that will consume a single character if it's among those
      *  contained in "chars".
      */
-    function makeAnyCharRule(chars, invert, name, options) {
+    function makeAnyCharRule(chars, invert, options) {
         var pred = singleCharPredicate(chars, invert);
         if (invert) pred = invertPredicate(pred);
-        return finalizeRule( function(rule, reader) { return _singleChar(rule, reader, pred); }, name, options );
+        return finalizeRule( function(rule, reader) { return _singleChar(rule, reader, pred); }, options );
     }
     
 	//--- PUBLIC API ----------------------------------------------------------
@@ -234,9 +231,9 @@ define( function() {
          *  in which case the generated rule will consume any character
          *  contained in that string.
          */
-        aChar: function(pred, name, options) {
+        aChar: function(pred, options) {
             if (pred === undefined || typeof pred === 'string' || pred instanceof Function)
-                return makeAnyCharRule(pred, false, name, options)
+                return makeAnyCharRule(pred, false, options)
             else
                 throw "Parser: aChar() called with non-supported predicate type";
         },
@@ -244,18 +241,18 @@ define( function() {
         /** This is the opposite of aChar(): it generates a rule consuming
          *  any character *not* in "chars".
          */
-        noneOf: function(chars, name, options) { 
+        noneOf: function(chars, options) { 
             if (typeof chars === 'string')
-                return makeAnyCharRule(chars, true, name, options);
+                return makeAnyCharRule(chars, true, options);
             else
                 throw 'Parser: noneOf() called with non-supported "chars" argument';
         },
         
         /** Similar to noneOf(), but for a single character.
          */
-        not: function(char_, name, options) {
+        not: function(char_, options) {
             if (typeof char_ === 'string' && char_.length === 1)
-                return makeAnyCharRule(char_, true, name, options)
+                return makeAnyCharRule(char_, true, options)
             else
                 throw 'Parser: not() called with non-supported "char_" argument: ' + char_;
         },
@@ -266,11 +263,12 @@ define( function() {
          *  will consume any single character contained in that string (in which
          *  case aChar() could be used interchangeably).
          */
-        anyOf: function(sub_rules, name, options) {
+        anyOf: function(sub_rules, options) {
             if (typeof sub_rules === 'string')
-                return makeAnyCharRule(sub_rules, name, options)
-            else if (sub_rules instanceof Array)
-                return finalizeRule( function(rule, reader) { return _anyOf(rule, reader, sub_rules); }, name, options )
+                return makeAnyCharRule(sub_rules, options)
+            else if (sub_rules instanceof Array) {
+                return finalizeRule( function(rule, reader) { return _anyOf(rule, reader, sub_rules); }, options )
+            }
             else
                 throw 'Parser: anyOf() called with non-supported "sub_rules" argument';
         },
@@ -281,29 +279,29 @@ define( function() {
          *  - an empty string that means that the rule *would* match, or
          *  - the value *false*, meaning that the rule would *not* match.
          */
-        lookAhead: function(sub_rule, name, options) {
-            return finalizeRule( function(rule, reader) { return _lookAhead(rule, reader, sub_rule); }, name, options );
+        lookAhead: function(sub_rule, options) {
+            return finalizeRule( function(rule, reader) { return _lookAhead(rule, reader, sub_rule); }, options );
         },
         
         /** Generates a rule that will consume an element if it conforms to
          *  the first specified rule but could *not* also be consumed by the
          *  second rule.
          */
-        butNot: function(sub_rule, neg_rule, name, options) {
-            return finalizeRule( function(rule, reader) { return _butNot(rule, reader, sub_rule, neg_rule); }, name, options );
+        butNot: function(sub_rule, neg_rule, options) {
+            return finalizeRule( function(rule, reader) { return _butNot(rule, reader, sub_rule, neg_rule); }, options );
         },
         
         /** As the name says, generates a rule that consumes an element conforming
          *  to all the specified sub-rules taken in sequence.
          */
-        sequence: function(sub_rules, name, options) {
+        sequence: function(sub_rules, options) {
             if (typeof sub_rules === 'string') {
                 var real_subrules = sub_rules.split('').map( function(c) { return makeAnyCharRule(c); } );
-                return finalizeRule( function(rule, reader) { return _sequence(rule, reader, real_subrules); }, name, options );
+                return finalizeRule( function(rule, reader) { return _sequence(rule, reader, real_subrules); }, options );
             }
             else if (sub_rules instanceof Array) {
                 // TODO: support converting array members
-                return finalizeRule( function(rule, reader) { return _sequence(rule, reader, sub_rules); }, name, options );
+                return finalizeRule( function(rule, reader) { return _sequence(rule, reader, sub_rules); }, options );
             }
             else throw 'Parser.sequence(): unsupported type for argument "sub_rules"';
         },
@@ -311,14 +309,14 @@ define( function() {
         /** Generates a rule consuming as many conforming elements as possible
          *  (i.e. "greedily").
          */
-        repetition: function(sub_rule, name, options) {
-            return finalizeRule( function(rule, reader) { return _repetition(rule, reader, sub_rule); }, name, options );
+        repetition: function(sub_rule, options) {
+            return finalizeRule( function(rule, reader) { return _repetition(rule, reader, sub_rule); }, options );
         },
         
         /** Generates an optional version of the specified rule.
          */
-        optional: function(sub_rule, name, options) {
-            return finalizeRule( function(rule, reader) { return _optional(rule, reader, sub_rule); }, name, options );
+        optional: function(sub_rule, options) {
+            return finalizeRule( function(rule, reader) { return _optional(rule, reader, sub_rule); }, options );
         },
         
         /** Generates a predicate-filtered version of the specified rule.
@@ -326,9 +324,9 @@ define( function() {
          *  The predicate can be replaced by a simple string, against which the
          *  the product of the rule would then be compared.
          */
-        filter: function(sub_rule, pred, inv, name, options) {
+        filter: function(sub_rule, pred, inv, options) {
             pred = convertPredicate(pred, inv);
-            return finalizeRule( function(rule, reader) { return _filter(rule, reader, sub_rule, pred); }, name, options );
+            return finalizeRule( function(rule, reader) { return _filter(rule, reader, sub_rule, pred); }, options );
         },
         
         /** Generates a rule that consumes characters conforming to the specified
@@ -339,10 +337,17 @@ define( function() {
          *  language, and especially those in JavaScript, where operators can have up
          *  to 3 characters coming from a relatively small set.
          */
-        string: function(char_pred, elem_pred, name, options) {
+        string: function(char_pred, elem_pred, options) {
             char_pred = singleCharPredicate(char_pred);
             elem_pred = convertPredicate(elem_pred);
-            return finalizeRule( function(rule, reader) { return _string(rule, reader, char_pred, elem_pred); }, name, options );
+            return finalizeRule( function(rule, reader) { return _string(rule, reader, char_pred, elem_pred); }, options );
+        },
+        
+        finalizeGrammar: function(g) {
+            for (var name in g) {
+                g[name].rule_name = name;
+            }
+            return g;
         }
 	}
 });

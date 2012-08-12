@@ -57,12 +57,12 @@ define(["./parser"], function(P) {
     ]);
 
     g.keyword = P.filter(g.identifierName, function(text) {
-        return (KEYWORDS.indexOf(text) >= 0);
+        return  (KEYWORDS.indexOf(text) >= 0);
     });
 
-    g.nullLiteral = P.filter(g.identifierName, "null", "NullLiteral");
+    g.nullLiteral = P.filter(g.identifierName, "null");
 
-    g.booleanLiteral = P.filter(g.identifierName, ["true", "false"], "BooleanLiteral");
+    g.booleanLiteral = P.filter(g.identifierName, ["true", "false"]);
 
     g.reservedWord = P.anyOf([
         g.keyword,
@@ -216,6 +216,24 @@ define(["./parser"], function(P) {
         g.lineTerminator,
         g.comment,
         g.token,
+        g.punctuator
+    ]);
+    
+    // The following two rules are useful for syntax highlighting
+    
+    g.token2 = P.anyOf([
+        g.identifier,
+        g.reservedWord,
+        g.punctuator,
+        g.numericLiteral,
+        g.stringLiteral
+    ]);
+    
+    g.inputElement2 = P.anyOf([
+        g.whiteSpace,
+        g.lineTerminator,
+        g.comment,
+        g.token2,
         g.punctuator
     ]);
     

@@ -17,6 +17,12 @@ define( function() {
         else return this.content.getType();
     }
     
+    Element.prototype.getSubTypes = function() {
+        var types = [];
+        for (var elem = this.content; elem instanceof Element; elem = elem.content) types.push( elem.rule.rule_name );
+        return types;
+    }
+    
 	//--- Building blocks -----------------------------------------------------
 	
 	function _singleChar(rule, reader, pred) {
@@ -27,9 +33,7 @@ define( function() {
     
     /** Consume conforming characters greedily as long as the element conforms.
      */
-    // TODO: remove savePos() etc. ?
     function _string(rule, reader, char_pred, elem_pred) {
-        reader.savePos();
         var text = '';
         while (char_pred(reader.peekNextChar())) {
             var text2 = text + reader.peekNextChar();
@@ -37,7 +41,6 @@ define( function() {
             reader.consumeNextChar();
             text = text2;
         }
-        reader.dropLastMark();
         return text.length > 0 ? new Element(rule, text) : false;
     }
     
@@ -85,11 +88,11 @@ define( function() {
         var sub_elem = sub_rule(sub_rule, reader);
         var end_pos = reader.getCurrentPos();
         reader.restorePos();
-        if (res === false) return false;
+        if (sub_elem === false) return false;
         reader.savePos();
-        var res2 = neg_rule(neg_rule, reader);
+        var neg_elem = neg_rule(neg_rule, reader);
         reader.restorePos();
-        if (res2 !== false && res2 === res) return false;
+        if ((neg_elem !== false) && (neg_elem.getText() === sub_elem.getText()) ) return false;
         reader.goToPos(end_pos);
         return new Element(rule, sub_elem);
     }
@@ -127,7 +130,7 @@ define( function() {
     function _filter(rule, reader, sub_rule, pred) {
         reader.savePos();
         var sub_elem = sub_rule(sub_rule, reader);
-        if (sub_elem === false || !pred(sub_elem.getText())) { 
+        if ((sub_elem === false) || (!pred(sub_elem.getText()))) { 
             reader.restorePos(); return false; }
         reader.dropLastMark(); 
         return new Element(rule, sub_elem);

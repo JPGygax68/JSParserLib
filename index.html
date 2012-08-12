@@ -8,6 +8,14 @@
   <title>Web Page</title>
   <script type="text/javascript" src="jquery-1.7.2.min.js"></script>
   <script type="text/javascript" src="require.js"></script>
+  <style type="text/css">
+    .code.javascript > .keyWord { color: blue; }
+    .code.javascript > .reservedWord { color: blue; font-style: italic; }
+    .code.javascript > .identifier { color: black; }
+    .code.javascript > .comment { color: green; }
+    .code.javascript > .punctuator { color: orange; }
+    .code.javascript > .stringLiteral { color: grey; }
+  </style>
   <script type="text/javascript" id="js_source">
     var myFunc = function() {
       // This is a single-line comment
@@ -33,16 +41,30 @@ string";
       require(['./parser/reader', './parser/parser', './parser/javascript'], function(Reader, Parser, JS) {
         var source = $('#js_source').text();
         var reader = Reader.createReader(source);
-        var parser = Parser.createParser(reader, JS.inputElementDiv);
+        var parser = Parser.createParser(reader, JS.inputElement2);
         var elem;
         var i = 0;
         console.log('Starting to parse...');
+        var $cont = $('<pre>').addClass('code').addClass('javascript');
+        var last_type = '', $last_node;
         while ((elem = parser.getNextElement()) !== false) {
-            console.log('Element #'+i+': "' + elem.getText().trim() + '"' + ' (' + elem.getType() + ')' );
+            var $node;
+            if (elem.getType() === 'whiteSpace' && $last_node.hasClass('whiteSpace')) {
+              $last_node.text( $last_node.text() + elem.getText() );
+            }
+            /* else if (elem.getType() === 'lineBreak') {
+              $node = $('<br/>');
+            } */
+            else {
+              $node = $('<span>').addClass( elem.getSubTypes().join(' ') ).text( elem.getText() );
+            }
+            $cont.append( $node );
+            $last_node = $node;
             i += 1;
             if (i > 1000) throw "forced stop";
         }
         console.log(i + ' elements obtained.');
+        $('body').append( $cont );
       });
     });
   </script>

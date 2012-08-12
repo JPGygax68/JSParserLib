@@ -264,9 +264,9 @@ define( function() {
          *  case aChar() could be used interchangeably).
          */
         anyOf: function(sub_rules, options) {
-            if (typeof sub_rules === 'string')
+            /* if (typeof sub_rules === 'string')
                 return makeAnyCharRule(sub_rules, options)
-            else if (sub_rules instanceof Array) {
+            else */ if (sub_rules instanceof Array) {
                 return finalizeRule( function(rule, reader) { return _anyOf(rule, reader, sub_rules); }, options )
             }
             else

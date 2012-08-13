@@ -16,6 +16,7 @@
     .code.javascript > .punctuator { color: orange; }
     .code.javascript > .stringLiteral { color: grey; }
     .code.javascript > .numericLiteral { color: red; }
+    .code.javascript > .regularExpressionLiteral { color: purple; }
   </style>
   <script type="text/javascript" id="js_source">
     var myFunc = function() {
@@ -30,7 +31,8 @@
 string";
       var s4 = 'Single-quote string';
       var s5 = 'Escape sequences: \0 \xaa \u1234'; 
-      var i1 = 2.57;
+      var i1 = 2.57e2;
+      var re = /A.*[a-z]+/;
     }
   </script>
   <script type="text/javascript">

@@ -35,7 +35,7 @@ define( function() {
      */
     function _string(rule, reader, char_pred, elem_pred) {
         var text = '';
-        while (char_pred(reader.peekNextChar())) {
+        while (!char_pred || char_pred(reader.peekNextChar())) {
             var text2 = text + reader.peekNextChar();
             if (elem_pred && !elem_pred(text2)) break;
             reader.consumeNextChar();
@@ -156,7 +156,7 @@ define( function() {
     }
     
     function singleCharPredicate(pred) {
-        if (pred === undefined) {
+        if (pred === undefined || pred === '') {
             return function(c) { return true; }
         }
         else if (typeof pred === 'string') {

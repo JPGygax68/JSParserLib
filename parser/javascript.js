@@ -4,6 +4,8 @@ define(["./parser"], function(P) {
                   + "continue for switch while debugger function this with default if throw "
                   + "delete in try").split(' ');
 
+    var FUTURE_RESERVED_WORDS = ("class enum extends super const export import").split(' ');
+    
     var PUNCTUATORS = ("{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % "
                      + "++ -- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= "
                      + "<<= >>= >>>= &= |= ^=").split(' ');
@@ -64,10 +66,14 @@ define(["./parser"], function(P) {
 
     g.booleanLiteral = P.filter(g.identifierName, ["true", "false"]);
 
+    g.futureReservedWord = P.filter(g.identifierName, function(text) {
+        return  (FUTURE_RESERVED_WORDS.indexOf(text) >= 0);
+    });
+    
     g.reservedWord = P.anyOf([
         g.keyword,
         g.nullLiteral,
-        //g.futureReservedWord,
+        g.futureReservedWord,
         g.booleanLiteral 
     ]);
     
@@ -141,7 +147,7 @@ define(["./parser"], function(P) {
     g.lineTerminatorSequence = P.anyOf([
         P.aChar('\x0A\u2028\u2029'),
         P.sequence([ P.aChar('\x0D'), P.lookAhead(P.not('\x0A')) ]),
-        P.string('\x0D\x0A')        
+        P.sequence('\x0D\x0A')        
     ]);
     
     g.lineContinuation = P.sequence([ P.anyOf('\\'), g.lineTerminatorSequence ]);
@@ -171,12 +177,53 @@ define(["./parser"], function(P) {
         ])
     ]);
 
+    g.regularExpressionNonTerminator = P.noneOf(LINE_TERMINATORS);
+    
+    g.regularExpressionBackslashSequence = P.sequence([ P.aChar('\\'), g.regularExpressionNonTerminator ]);
+    
+    g.regularExpressionClassChar = P.anyOf([
+        P.butNot(g.regularExpressionNonTerminator, P.anyOf(']\\')),
+        g.regularExpressionBackslashSequence
+    ]);
+    
+    g.regularExpressionClass = P.sequence([
+        P.aChar('['),
+        P.repetition(g.regularExpressionClassChar),
+        P.aChar(']')
+    ]);
+    
+    g.regularExpressionFirstChar = P.anyOf([
+        P.butNot(g.regularExpressionNonTerminator, P.anyOf('*\\/[')),
+        g.regularExpressionBackslashSequence,
+        g.regularExpressionClass
+    ]);
+    
+    g.regularExpressionChar = P.anyOf([
+        P.butNot(g.regularExpressionNonTerminator, P.anyOf('\\/[')),
+        g.regularExpressionBackslashSequence,
+        g.regularExpressionClass
+    ]);
+    
+    g.regularExpressionBody = P.sequence([
+        g.regularExpressionFirstChar,
+        P.repetition(g.regularExpressionChar)
+    ]);
+    
+    g.regularExpressionFlags = P.repetition(g.identifierPart);
+    
+    g.regularExpressionLiteral = P.sequence([
+        P.aChar('/'),
+        g.regularExpressionBody,
+        P.aChar('/'),
+        g.regularExpressionFlags
+    ]);
+    
     g.literal = P.anyOf([
         g.nullLiteral,
         g.booleanLiteral,
         g.numericLiteral,
         g.stringLiteral,
-        //g.regularExpressionLiteral
+        g.regularExpressionLiteral
     ]);
 
     g.multiLineCommentChar = P.anyOf([
@@ -185,13 +232,13 @@ define(["./parser"], function(P) {
     ]);
     
     g.multiLineComment = P.sequence([
-        P.string('/*'),
+        P.sequence('/*'),
         P.repetition(g.multiLineCommentChar),
-        P.string('*/')
+        P.sequence('*/')
     ]),
     
     g.singleLineComment = P.sequence([
-        P.string('//'),
+        P.sequence('//'),
         P.repetition( P.noneOf(LINE_TERMINATORS) )
     ]);
     
@@ -226,7 +273,8 @@ define(["./parser"], function(P) {
         g.reservedWord,
         g.punctuator,
         g.numericLiteral,
-        g.stringLiteral
+        g.stringLiteral,
+        g.regularExpressionLiteral
     ]);
     
     g.inputElement2 = P.anyOf([

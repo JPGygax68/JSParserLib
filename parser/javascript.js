@@ -182,7 +182,7 @@ define(["./parser"], function(P) {
     g.regularExpressionBackslashSequence = P.sequence([ P.aChar('\\'), g.regularExpressionNonTerminator ]);
     
     g.regularExpressionClassChar = P.anyOf([
-        P.butNot(g.regularExpressionNonTerminator, P.anyOf(']\\')),
+        P.noneOf(LINE_TERMINATORS + ']\\'), //P.butNot(g.regularExpressionNonTerminator, P.anyOf(']\\')),
         g.regularExpressionBackslashSequence
     ]);
     

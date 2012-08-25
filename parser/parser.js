@@ -25,15 +25,19 @@ define( function() {
     
 	//--- Building blocks -----------------------------------------------------
 	
-	function _singleChar(rule, reader, pred) {
+    /*  The building block functions are called as internal methods of Rule 
+     *  objects (while the Rules themselves are function objects).
+     */
+     
+	function _singleChar(reader, pred) {
 		var c = reader.peekNextChar();
-		if (pred(c)) { reader.consumeNextChar(); return new Element(rule, c); }
+		if (pred(c)) { reader.consumeNextChar(); return new Element(this, c); }
 		return false;
 	}
     
     /** Consume conforming characters greedily as long as the element conforms.
      */
-    function _string(rule, reader, char_pred, elem_pred) {
+    function _string(reader, char_pred, elem_pred) {
         var text = '';
         while (!char_pred || char_pred(reader.peekNextChar())) {
             var text2 = text + reader.peekNextChar();
@@ -41,29 +45,29 @@ define( function() {
             reader.consumeNextChar();
             text = text2;
         }
-        return text.length > 0 ? new Element(rule, text) : false;
+        return text.length > 0 ? new Element(this, text) : false;
     }
     
-	function _anyOf(rule, reader, sub_rules) {
+	function _anyOf(reader, sub_rules) {
 		for (var i = 0; i < sub_rules.length; i ++) {
-			var sub_elem = sub_rules[i](sub_rules[i], reader);
-			if (sub_elem !== false) return new Element(rule, sub_elem);
+			var sub_elem = sub_rules[i].call(sub_rules[i], reader);
+			if (sub_elem !== false) return new Element(this, sub_elem);
 		}
 		return false;
 	}
     
     /** Not used at the moment.
      */
-    function _anyOf__greedy(rule, reader, sub_rules) {
+    function _anyOf__greedy(reader, sub_rules) {
         var result = false;
         var end_pos;
         for (var i = 0; i < sub_rules.length; i ++) {
             reader.savePos();
-            var sub_elem = sub_rules[i](sub_rules[i], reader);
+            var sub_elem = sub_rules[i].call(sub_rules[i], reader);
             if (sub_elem !== false) {
                 // TODO: better way to compare match "quality" ?
                 if (result === false || sub_elem.getText().length > result.getText().length) {
-                    result = new Element(rule, text);
+                    result = new Element(this, text);
                     end_pos = reader.getCurrentPos();
                 }
             }
@@ -73,67 +77,67 @@ define( function() {
         return result;
     }
 
-    function _lookAhead(rule, reader, sub_rule) {
+    function _lookAhead(reader, sub_rule) {
         reader.savePos();
-        var sub_elem = sub_rule(sub_rule, reader);
+        var sub_elem = sub_rule.call(sub_rule, reader);
         reader.restorePos();
-        return sub_elem !== false ? new Element(rule, sub_elem) : false;
+        return sub_elem !== false ? new Element(this, sub_elem) : false;
     }
 
     /** Rejects the element if it can be parsed as the first rule but also as the
      *  second one.
      */
-    function _butNot(rule, reader, sub_rule, neg_rule) {
+    function _butNot(reader, sub_rule, neg_rule) {
         reader.savePos();
-        var sub_elem = sub_rule(sub_rule, reader);
+        var sub_elem = sub_rule.call(sub_rule, reader);
         var end_pos = reader.getCurrentPos();
         reader.restorePos();
         if (sub_elem === false) return false;
         reader.savePos();
-        var neg_elem = neg_rule(neg_rule, reader);
+        var neg_elem = neg_rule.call(neg_rule, reader);
         reader.restorePos();
         if ((neg_elem !== false) && (neg_elem.getText() === sub_elem.getText()) ) return false;
         reader.goToPos(end_pos);
-        return new Element(rule, sub_elem);
+        return new Element(this, sub_elem);
     }
     
     /** This implements a 0..n times _repetition.
      */
-	function _repetition(rule, reader, sub_rule) {
+	function _repetition(reader, sub_rule) {
 		var text = '';
 		while (true) {
-			var sub_elem = sub_rule(sub_rule, reader);
-			if (sub_elem === false) return new Element(rule, text);
+			var sub_elem = sub_rule.call(sub_rule, reader);
+			if (sub_elem === false) return new Element(this, text);
 			text += sub_elem.getText();
 		}
         throw 'Parser._repetition(): must not arrive at end!';
 	}
 	
-    function _optional(rule, reader, sub_rule) {
-        var sub_elem = sub_rule(sub_rule, reader);
-        if (sub_elem === false) return new Element(rule, "");
-        else return new Element(rule, sub_elem);
+    function _optional(reader, sub_rule) {
+        var sub_elem = sub_rule.call(sub_rule, reader);
+        if (sub_elem === false) return new Element(this, "");
+        else return new Element(this, sub_elem);
     }
     
-	function _sequence(rule, reader, sub_rules) {
+	function _sequence(reader, sub_rules) {
 		reader.savePos();
 		var text = '';
 		for (var i = 0; i < sub_rules.length; i ++) {
-			var sub_elem = sub_rules[i](sub_rules[i], reader);
+			var sub_elem = sub_rules[i].call(sub_rules[i], reader);
 			if (sub_elem === false) { reader.restorePos(); return false; }
 			text += sub_elem.getText();
 		}
 		reader.dropLastMark();
-		return new Element(rule, text);
+		return new Element(this, text);
 	}
 	
-    function _filter(rule, reader, sub_rule, pred) {
+    function _filter(reader, sub_rule, pred) {
         reader.savePos();
-        var sub_elem = sub_rule(sub_rule, reader);
+        var sub_elem = sub_rule.call(sub_rule, reader);
         if ((sub_elem === false) || (!pred(sub_elem.getText()))) { 
             reader.restorePos(); return false; }
         reader.dropLastMark(); 
-        return new Element(rule, sub_elem);
+        return new Element(this, sub_elem);
     }
     
     //--- Parser class --------------------------------------------------------
@@ -145,7 +149,7 @@ define( function() {
         //var that = this;
         
         this.getNextElement = function() {
-            return root_rule(root_rule, reader);
+            return root_rule.call(root_rule, reader);
         }
     }
     
@@ -198,6 +202,9 @@ define( function() {
         return (invert ? invertPredicate(real_pred) : real_pred);
     }
 
+    /** Attach options to a rule (which is a function object).
+     *  Every rule is a function object.
+     */
     function finalizeRule(rule, options) {
         if (options !== undefined) {
             for (var key in options) {
@@ -212,9 +219,10 @@ define( function() {
      *  contained in "chars".
      */
     function makeAnyCharRule(chars, invert, options) {
+        var options = options || {};
         var pred = singleCharPredicate(chars, invert);
         if (invert) pred = invertPredicate(pred);
-        return finalizeRule( function(rule, reader) { return _singleChar(rule, reader, pred); }, options );
+        return finalizeRule( function(reader) { return _singleChar.call(this, reader, pred); }, options );
     }
     
 	//--- PUBLIC API ----------------------------------------------------------
@@ -270,7 +278,7 @@ define( function() {
             if (typeof sub_rules === 'string')
                 return makeAnyCharRule(sub_rules, options)
             else if (sub_rules instanceof Array) {
-                return finalizeRule( function(rule, reader) { return _anyOf(rule, reader, sub_rules); }, options )
+                return finalizeRule( function(reader) { return _anyOf.call(this, reader, sub_rules); }, options )
             }
             else
                 throw 'Parser: anyOf() called with non-supported "sub_rules" argument';
@@ -283,7 +291,7 @@ define( function() {
          *  - the value *false*, meaning that the rule would *not* match.
          */
         lookAhead: function(sub_rule, options) {
-            return finalizeRule( function(rule, reader) { return _lookAhead(rule, reader, sub_rule); }, options );
+            return finalizeRule( function(reader) { return _lookAhead.call(this, reader, sub_rule); }, options );
         },
         
         /** Generates a rule that will consume an element if it conforms to
@@ -291,7 +299,7 @@ define( function() {
          *  second rule.
          */
         butNot: function(sub_rule, neg_rule, options) {
-            return finalizeRule( function(rule, reader) { return _butNot(rule, reader, sub_rule, neg_rule); }, options );
+            return finalizeRule( function(reader) { return _butNot.call(this, reader, sub_rule, neg_rule); }, options );
         },
         
         /** As the name says, generates a rule that consumes an element conforming
@@ -300,11 +308,11 @@ define( function() {
         sequence: function(sub_rules, options) {
             if (typeof sub_rules === 'string') {
                 var real_subrules = sub_rules.split('').map( function(c) { return makeAnyCharRule(c); } );
-                return finalizeRule( function(rule, reader) { return _sequence(rule, reader, real_subrules); }, options );
+                return finalizeRule( function(reader) { return _sequence.call(this, reader, real_subrules); }, options );
             }
             else if (sub_rules instanceof Array) {
                 // TODO: support converting array members
-                return finalizeRule( function(rule, reader) { return _sequence(rule, reader, sub_rules); }, options );
+                return finalizeRule( function(reader) { return _sequence.call(this, reader, sub_rules); }, options );
             }
             else throw 'Parser.sequence(): unsupported type for argument "sub_rules"';
         },
@@ -313,13 +321,13 @@ define( function() {
          *  (i.e. "greedily").
          */
         repetition: function(sub_rule, options) {
-            return finalizeRule( function(rule, reader) { return _repetition(rule, reader, sub_rule); }, options );
+            return finalizeRule( function(reader) { return _repetition.call(this, reader, sub_rule); }, options );
         },
         
         /** Generates an optional version of the specified rule.
          */
         optional: function(sub_rule, options) {
-            return finalizeRule( function(rule, reader) { return _optional(rule, reader, sub_rule); }, options );
+            return finalizeRule( function(reader) { return _optional.call(this, reader, sub_rule); }, options );
         },
         
         /** Generates a predicate-filtered version of the specified rule.
@@ -329,7 +337,7 @@ define( function() {
          */
         filter: function(sub_rule, pred, inv, options) {
             pred = convertPredicate(pred, inv);
-            return finalizeRule( function(rule, reader) { return _filter(rule, reader, sub_rule, pred); }, options );
+            return finalizeRule( function(reader) { return _filter.call(this, reader, sub_rule, pred); }, options );
         },
         
         /** Generates a rule that consumes characters conforming to the specified
@@ -343,7 +351,7 @@ define( function() {
         string: function(char_pred, elem_pred, options) {
             char_pred = singleCharPredicate(char_pred);
             elem_pred = convertPredicate(elem_pred);
-            return finalizeRule( function(rule, reader) { return _string(rule, reader, char_pred, elem_pred); }, options );
+            return finalizeRule( function(reader) { return _string.call(this, reader, char_pred, elem_pred); }, options );
         },
         
         finalizeGrammar: function(g) {

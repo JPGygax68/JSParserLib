@@ -215,14 +215,26 @@ define( function() {
         return rule;
     }
     
+    function makeButNotCharRule(pos_pred, neg_pred, options) {
+        var pos_pred = singleCharPredicate(pos_pred);
+        var neg_pred = singleCharPredicate(neg_pred);
+        var full_pred = function(c) { return pos_pred(c) && (!neg_pred(c)); };
+        var options = options || { char_predicate: full_pred };
+        return finalizeRule( function(reader) { return _singleChar.call(this, reader, full_pred); }, options );
+    }
+    
     /** Generates a rule that will consume a single character if it's among those
      *  contained in "chars".
      */
     function makeAnyCharRule(chars, invert, options) {
-        var options = options || {};
         var pred = singleCharPredicate(chars, invert);
         if (invert) pred = invertPredicate(pred);
+        var options = options || { char_predicate: pred };
         return finalizeRule( function(reader) { return _singleChar.call(this, reader, pred); }, options );
+    }
+    
+    function isSingleCharRule(rule) {
+        return typeof(rule) === 'string' || rule.char_predicate;
     }
     
 	//--- PUBLIC API ----------------------------------------------------------
@@ -299,7 +311,12 @@ define( function() {
          *  second rule.
          */
         butNot: function(sub_rule, neg_rule, options) {
-            return finalizeRule( function(reader) { return _butNot.call(this, reader, sub_rule, neg_rule); }, options );
+            // Are both rules single-char rules ?
+            if (isSingleCharRule(sub_rule) && isSingleCharRule(neg_rule)) {
+                return makeButNotCharRule(sub_rule.char_predicate, neg_rule.char_predicate, options)
+            }
+            else 
+                return finalizeRule( function(reader) { return _butNot.call(this, reader, sub_rule, neg_rule); }, options );
         },
         
         /** As the name says, generates a rule that consumes an element conforming

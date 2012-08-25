@@ -39,9 +39,9 @@ define( function() {
      */
     function _string(reader, char_pred, elem_pred) {
         var text = '';
-        while (!char_pred || char_pred(reader.peekNextChar())) {
+        while ((!char_pred) || char_pred(reader.peekNextChar())) {
             var text2 = text + reader.peekNextChar();
-            if (elem_pred && !elem_pred(text2)) break;
+            if (elem_pred && (!elem_pred(text2))) break;
             reader.consumeNextChar();
             text = text2;
         }
@@ -215,6 +215,8 @@ define( function() {
         return rule;
     }
     
+    /** Creates a single-char rule that combines a positive and a negative predicate.
+     */
     function makeButNotCharRule(pos_pred, neg_pred, options) {
         var pos_pred = singleCharPredicate(pos_pred);
         var neg_pred = singleCharPredicate(neg_pred);
@@ -235,6 +237,23 @@ define( function() {
     
     function isSingleCharRule(rule) {
         return typeof(rule) === 'string' || rule.char_predicate;
+    }
+    
+    function allSingleCharRules(rules) { return rules.every( isSingleCharRule ); }
+    
+    function mergeSingleCharRules(sub_rules, options) {
+        console.log('all single char rules!');
+        var rule = function(reader) {
+            var c = reader.peekNextChar();
+            for (var i = 0; i < sub_rules.length; i ++) {
+                if (sub_rules[i].char_predicate(c)) {
+                    reader.consumeNextChar();
+                    return new Element(sub_rules[i], c);
+                }
+            }
+            return false;
+        };
+        return finalizeRule( rule, options );
     }
     
 	//--- PUBLIC API ----------------------------------------------------------
@@ -290,7 +309,11 @@ define( function() {
             if (typeof sub_rules === 'string')
                 return makeAnyCharRule(sub_rules, options)
             else if (sub_rules instanceof Array) {
-                return finalizeRule( function(reader) { return _anyOf.call(this, reader, sub_rules); }, options )
+                // TODO: optimize by merging single-char rules
+                if (allSingleCharRules(sub_rules))
+                    return mergeSingleCharRules(sub_rules, options);
+                else
+                    return finalizeRule( function(reader) { return _anyOf.call(this, reader, sub_rules); }, options )
             }
             else
                 throw 'Parser: anyOf() called with non-supported "sub_rules" argument';

@@ -30,7 +30,10 @@ define(["./charclasses"], function(CharClasses) {
 	
 	SourceReader.prototype.restorePos = function() {
         var pos = this.marks.pop();
-        this.goToPos(pos);
+        if (pos.i !== this.i) {
+            if (pos.i < (this.i - 1) ) console.log('goToPos() from ' + this.i + ' to ' + pos.i + ': ' + this.text.substr(pos.i, this.i - pos.i) );
+            this.goToPos(pos);
+        }
 	}
 
 	SourceReader.prototype.dropLastMark = function() {

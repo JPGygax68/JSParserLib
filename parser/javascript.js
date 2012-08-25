@@ -30,6 +30,8 @@ define(["./parser"], function(P) {
 
     var g = {};
     
+    function isLowerCaseLetter(c) { return c >= 'a' && c <= 'z'; }
+    
     g.unicodeLetter = P.aChar( function(c) {
         return (c >= 'A' && c <= 'Z') 
             || (c >= 'a' && c <= 'z');
@@ -63,11 +65,13 @@ define(["./parser"], function(P) {
     });
 
     g.nullLiteral = P.filter(g.identifierName, "null");
+    //g.nullLiteral = P.string( isLowerCaseLetter, function(s) { return s === 'null'.substr(0, s.length); } );
 
     g.booleanLiteral = P.filter(g.identifierName, ["true", "false"]);
+    //g.booleanLiteral = P.string( isLowerCaseLetter, ["true", "false"]);
 
     g.futureReservedWord = P.filter(g.identifierName, function(text) {
-        return  (FUTURE_RESERVED_WORDS.indexOf(text) >= 0);
+        return (FUTURE_RESERVED_WORDS.indexOf(text) >= 0);
     });
     
     g.reservedWord = P.anyOf([

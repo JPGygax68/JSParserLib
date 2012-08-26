@@ -1,11 +1,5 @@
 define(["./parser"], function(P) {
 
-    var KEYWORDS = ("break do instanceof typeof case else new var catch finally return void "
-                  + "continue for switch while debugger function this with default if throw "
-                  + "delete in try").split(' ');
-
-    var FUTURE_RESERVED_WORDS = ("class enum extends super const export import").split(' ');
-    
     var PUNCTUATORS = "{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % "
                     + "++ -- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= "
                     + "<<= >>= >>>= &= |= ^=";                     
@@ -59,26 +53,9 @@ define(["./parser"], function(P) {
         P.repetition(g.identifierPart)
     ]);
 
-    g.keyword = P.filter(g.identifierName, function(text) {
-        return  (KEYWORDS.indexOf(text) >= 0);
-    });
-
     g.nullLiteral = P.filter(g.identifierName, "null");
 
     g.booleanLiteral = P.filter(g.identifierName, ["true", "false"]);
-
-    g.futureReservedWord = P.filter(g.identifierName, function(text) {
-        return (FUTURE_RESERVED_WORDS.indexOf(text) >= 0);
-    });
-    
-    g.reservedWord = P.anyOf([
-        g.keyword,
-        g.nullLiteral,
-        g.futureReservedWord,
-        g.booleanLiteral 
-    ]);
-    
-    g.identifier = P.butNot(g.identifierName, g.reservedWord);
 
     g.punctuator = P.string( 
         function(c) { return PUNCT_CHARS.indexOf(c) >= 0; }, 
@@ -219,6 +196,7 @@ define(["./parser"], function(P) {
         g.regularExpressionFlags
     ]);
     
+    /*
     g.literal = P.anyOf([
         g.nullLiteral,
         g.booleanLiteral,
@@ -226,6 +204,7 @@ define(["./parser"], function(P) {
         g.stringLiteral,
         g.regularExpressionLiteral
     ]);
+    */
 
     /** The multiline comment rules from 7.4 of the specification had to be adapted to avoid
      *  recursion, which is not supported by this parser framework.
@@ -259,7 +238,8 @@ define(["./parser"], function(P) {
         g.identifierName,
         g.punctuator,
         g.numericLiteral,
-        g.stringLiteral
+        g.stringLiteral,
+        
     ]);
     
     g.inputElementDiv = P.anyOf([
@@ -270,25 +250,12 @@ define(["./parser"], function(P) {
         g.punctuator
     ]);
     
-    /** The following two rules are useful for syntax highlighting, because they classify
-     *  identifiers by means of the anyOf() classification mechanism. However, they are
-     *  not part of the EcmaScript specification, so use with caution!
-     */    
-    g.token2 = P.anyOf([
-        g.identifier,
-        g.reservedWord,
-        g.punctuator,
-        g.numericLiteral,
-        g.stringLiteral,
-        g.regularExpressionLiteral
-    ]);
-    
-    g.inputElement2 = P.anyOf([
+    g.inputElementRegExp = P.anyOf([
         g.whiteSpace,
         g.lineTerminator,
         g.comment,
-        g.token2,
-        g.punctuator
+        g.token,
+        g.regularExpressionLiteral
     ]);
     
     return P.finalizeGrammar(g); // return the grammar

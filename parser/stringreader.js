@@ -18,7 +18,7 @@ define(["./charclasses"], function(CharClasses) {
         return { i: this.i, row: this.row, col: this.col };
     }
     
-    SourceReader.prototype.goToPos = function(pos) {
+    SourceReader.prototype._goToPos = function(pos) {
         this.i = pos.i; this.row = pos.row; this.col = pos.col;
     }
     
@@ -32,8 +32,8 @@ define(["./charclasses"], function(CharClasses) {
         //console.log('restorePos');
         var pos = this.marks.pop();
         if (pos.i !== this.i) {
-            if (pos.i < this.i ) console.log('goToPos() from ' + this.i + ' to ' + pos.i + ': ' + this.text.substr(pos.i, this.i - pos.i) );
-            this.goToPos(pos);
+            if (pos.i < this.i ) console.log('_goToPos() from ' + this.i + ' to ' + pos.i + ': ' + this.text.substr(pos.i, this.i - pos.i) );
+            this._goToPos(pos);
         }
 	}
 

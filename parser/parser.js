@@ -64,55 +64,10 @@ define( function() {
 		return false;
 	}
     
-    /** Not used at the moment.
-     */
-    function _anyOf__greedy(reader, sub_rules) {
-        var result = false;
-        var end_pos;
-        for (var i = 0; i < sub_rules.length; i ++) {
-            reader.savePos();
-            var sub_elem = sub_rules[i].call(sub_rules[i], reader);
-            if (sub_elem !== false) {
-                // TODO: better way to compare match "quality" ?
-                if (result === false || sub_elem.getText().length > result.getText().length) {
-                    result = new Element(this, text);
-                    end_pos = reader.getCurrentPos();
-                }
-            }
-            reader.restorePos();
-        }
-        if (result !== false) reader.goToPos(end_pos);
-        return result;
-    }
-
-    function _lookAhead_old(reader, sub_rule) {
-        reader.savePos();
-        var sub_elem = sub_rule.call(sub_rule, reader);
-        reader.restorePos();
-        return sub_elem !== false ? new Element(this, sub_elem) : false;
-    }
-
     function _lookAhead(reader, pred) {
         return pred(reader.currentElement()) ? new Element(this, reader.currentElement()) : false;
     }
 
-    /** Rejects the element if it can be parsed as the first rule but also as the
-     *  second one.
-     */
-    function _butNot(reader, sub_rule, neg_rule) {
-        reader.savePos();
-        var sub_elem = sub_rule.call(sub_rule, reader);
-        var end_pos = reader.getCurrentPos();
-        reader.restorePos();
-        if (sub_elem === false) return false;
-        reader.savePos();
-        var neg_elem = neg_rule.call(neg_rule, reader);
-        reader.restorePos();
-        if ((neg_elem !== false) && (neg_elem.getText() === sub_elem.getText()) ) return false;
-        reader.goToPos(end_pos);
-        return new Element(this, sub_elem);
-    }
-    
     /** This implements a 0..n times _repetition.
      */
 	function _repetition(reader, sub_rule) {
@@ -344,8 +299,7 @@ define( function() {
             if (isSingleCharRule(sub_rule) && isSingleCharRule(neg_rule)) {
                 return makeButNotCharRule(sub_rule.char_predicate, neg_rule.char_predicate, options)
             }
-            else 
-                return finalizeRule( function(reader) { return _butNot.call(this, reader, sub_rule, neg_rule); }, options );
+            else throw 'Parser.butNot(): unsupported argument types';
         },
         
         /** As the name says, generates a rule that consumes an element conforming

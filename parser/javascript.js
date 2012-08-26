@@ -6,17 +6,16 @@ define(["./parser"], function(P) {
 
     var FUTURE_RESERVED_WORDS = ("class enum extends super const export import").split(' ');
     
-    var PUNCTUATORS = ("{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % "
-                     + "++ -- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= "
-                     + "<<= >>= >>>= &= |= ^=").split(' ');
-                     
+    var PUNCTUATORS = "{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % "
+                    + "++ -- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= "
+                    + "<<= >>= >>>= &= |= ^=";                     
     var PUNCT_CHARS = (function() { 
         var s = '', c, i, j;
         for (i = 0; i < PUNCTUATORS.length; i++)
-            for (j = 0; j < PUNCTUATORS[i].length; j++)
-                if (s.indexOf((c = PUNCTUATORS[i][j])) < 0) s += c;
+            if (s.indexOf((c = PUNCTUATORS[i])) < 0) s += c;
         return s;
     })();
+    PUNCTUATORS = PUNCTUATORS.split(' ');
                 
     var WHITESPACE_CHARS = '\u0009\u000B\u000C \u00A0\uFEFF\u1680\u180E\u2000\u2001\u2002\u2003\u2004'
                           +'\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF';
@@ -65,10 +64,8 @@ define(["./parser"], function(P) {
     });
 
     g.nullLiteral = P.filter(g.identifierName, "null");
-    //g.nullLiteral = P.string( isLowerCaseLetter, function(s) { return s === 'null'.substr(0, s.length); } );
 
     g.booleanLiteral = P.filter(g.identifierName, ["true", "false"]);
-    //g.booleanLiteral = P.string( isLowerCaseLetter, ["true", "false"]);
 
     g.futureReservedWord = P.filter(g.identifierName, function(text) {
         return (FUTURE_RESERVED_WORDS.indexOf(text) >= 0);
@@ -230,10 +227,13 @@ define(["./parser"], function(P) {
         g.regularExpressionLiteral
     ]);
 
+    /** The multiline comment rules from 7.4 of the specification had to be adapted to avoid
+     *  recursion, which is not supported by this parser framework.
+     */
     g.multiLineCommentChar = P.anyOf([
         P.not('*'),
         P.sequence([ P.aChar('*'), P.lookAhead(P.not('/')) ])
-    ]);
+    ]);    
     
     g.multiLineComment = P.sequence([
         P.sequence('/*'),
@@ -270,8 +270,10 @@ define(["./parser"], function(P) {
         g.punctuator
     ]);
     
-    // The following two rules are useful for syntax highlighting
-    
+    /** The following two rules are useful for syntax highlighting, because they classify
+     *  identifiers by means of the anyOf() classification mechanism. However, they are
+     *  not part of the EcmaScript specification, so use with caution!
+     */    
     g.token2 = P.anyOf([
         g.identifier,
         g.reservedWord,

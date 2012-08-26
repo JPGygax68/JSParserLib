@@ -1,5 +1,13 @@
 define( function() {
 
+    /** TODO: is it a good idea that rules are functions ?
+        -   It makes it more difficult to optimize them (anyOf), and the actual rule function may
+            never be executed (though these functions are very small closures).
+        -   If using objects instead of functions, inheritance may become useful.
+     */
+    
+    //--- Element: returned by parsing rules ----------------------------------
+    
     function Element(rule, content) {
         this.rule = rule;
         this.content = content;
@@ -23,15 +31,15 @@ define( function() {
         return types;
     }
     
-	//--- Building blocks -----------------------------------------------------
+	//--- Parser building blocks ----------------------------------------------
 	
     /*  The building block functions are called as internal methods of Rule 
      *  objects (while the Rules themselves are function objects).
      */
      
 	function _singleChar(reader, pred) {
-		var c = reader.peekNextChar();
-		if (pred(c)) { reader.consumeNextChar(); return new Element(this, c); }
+		var c = reader.currentElement();
+		if (pred(c)) { reader.consumeCurrentElement(); return new Element(this, c); }
 		return false;
 	}
     
@@ -39,10 +47,10 @@ define( function() {
      */
     function _string(reader, char_pred, elem_pred) {
         var text = '';
-        while ((!char_pred) || char_pred(reader.peekNextChar())) {
-            var text2 = text + reader.peekNextChar();
+        while ((!char_pred) || char_pred(reader.currentElement())) {
+            var text2 = text + reader.currentElement();
             if (elem_pred && (!elem_pred(text2))) break;
-            reader.consumeNextChar();
+            reader.consumeCurrentElement();
             text = text2;
         }
         return text.length > 0 ? new Element(this, text) : false;
@@ -77,11 +85,15 @@ define( function() {
         return result;
     }
 
-    function _lookAhead(reader, sub_rule) {
+    function _lookAhead_old(reader, sub_rule) {
         reader.savePos();
         var sub_elem = sub_rule.call(sub_rule, reader);
         reader.restorePos();
         return sub_elem !== false ? new Element(this, sub_elem) : false;
+    }
+
+    function _lookAhead(reader, pred) {
+        return pred(reader.currentElement()) ? new Element(this, reader.currentElement()) : false;
     }
 
     /** Rejects the element if it can be parsed as the first rule but also as the
@@ -159,25 +171,24 @@ define( function() {
         return function(s) { return ! pred(s); }
     }
     
-    function singleCharPredicate(pred) {
+    function singleCharPredicate(pred, invert) {
         if (pred === undefined || pred === '') {
-            return function(c) { return true; }
+            pred = function(c) { return true; }
         }
         else if (typeof pred === 'string') {
             var s = pred;
             if (pred.length === 0) {
-                return function(c) { return true; }
+                pred = function(c) { return true; }
             }
             else if (pred.length === 1) {
-                return function(c) { return c === s; };
+                pred = function(c) { return c === s; };
             }
             else {
-                return function(c) { return s.indexOf(c) >= 0; }
+                pred = function(c) { return s.indexOf(c) >= 0; }
             }
         }
-        else {
-            return pred;
-        }
+        if (invert) pred = invertPredicate(pred);
+        return pred;
     }
 
     function arrayPredicate(pred, invert) {
@@ -212,6 +223,7 @@ define( function() {
                 rule[key] = options[key];
             }
         }
+        rule.isRule = true;
         return rule;
     }
     
@@ -229,14 +241,13 @@ define( function() {
      *  contained in "chars".
      */
     function makeAnyCharRule(chars, invert, options) {
-        var pred = singleCharPredicate(chars, invert);
-        if (invert) pred = invertPredicate(pred);
+        var pred = singleCharPredicate(chars, invert, invert);
         var options = options || { char_predicate: pred };
         return finalizeRule( function(reader) { return _singleChar.call(this, reader, pred); }, options );
     }
     
     function isSingleCharRule(rule) {
-        return typeof(rule) === 'string' || rule.char_predicate;
+        return typeof(rule) === 'string' || (rule.isRule && rule.char_predicate);
     }
     
     function allSingleCharRules(rules) { return rules.every( isSingleCharRule ); }
@@ -244,10 +255,10 @@ define( function() {
     function mergeSingleCharRules(sub_rules, options) {
         console.log('all single char rules!');
         var rule = function(reader) {
-            var c = reader.peekNextChar();
+            var c = reader.currentElement();
             for (var i = 0; i < sub_rules.length; i ++) {
                 if (sub_rules[i].char_predicate(c)) {
-                    reader.consumeNextChar();
+                    reader.consumeCurrentElement();
                     return new Element(sub_rules[i], c);
                 }
             }
@@ -290,15 +301,6 @@ define( function() {
                 throw 'Parser: noneOf() called with non-supported "chars" argument';
         },
         
-        /** Similar to noneOf(), but for a single character.
-         */
-        not: function(char_, options) {
-            if (typeof char_ === 'string' && char_.length === 1)
-                return makeAnyCharRule(char_, true, options)
-            else
-                throw 'Parser: not() called with non-supported "char_" argument: ' + char_;
-        },
-
         /** Generates a rule that is an OR combination of the specified list of
          *  rules.
          *  If the "rules" parameter consists of a string, the generated rule
@@ -312,26 +314,30 @@ define( function() {
                 // TODO: optimize by merging single-char rules
                 if (allSingleCharRules(sub_rules))
                     return mergeSingleCharRules(sub_rules, options);
-                else
-                    return finalizeRule( function(reader) { return _anyOf.call(this, reader, sub_rules); }, options )
+                else {
+                    var real_subrules = sub_rules.map( function(sr) { return sr.isRule ? sr : makeAnyCharRule(sr); } );
+                    return finalizeRule( function(reader) { return _anyOf.call(this, reader, real_subrules); }, options )
+                }
             }
             else
                 throw 'Parser: anyOf() called with non-supported "sub_rules" argument';
         },
 
         /** lookAhead() generates a rule that will never consume anything.
-         *  Instead, it will check if the specified rule *could* match, then
-         *  backtracks and returns either:
-         *  - an empty string that means that the rule *would* match, or
-         *  - the value *false*, meaning that the rule would *not* match.
+         *  Instead, it simply checks whether or not the specified predicate *would* match
+         *  the *next* pending character of the input stream. The rule can return:
+         *  - an empty string that means that the predicate *would* match, or
+         *  - the value *false*, meaning that the predicate would *not* match.
          */
-        lookAhead: function(sub_rule, options) {
-            return finalizeRule( function(reader) { return _lookAhead.call(this, reader, sub_rule); }, options );
+        lookAhead: function(pred, options) {
+            pred = singleCharPredicate(pred);
+            return finalizeRule( function(reader) { return _lookAhead.call(this, reader, pred); }, options );
         },
         
         /** Generates a rule that will consume an element if it conforms to
          *  the first specified rule but could *not* also be consumed by the
          *  second rule.
+         *  TODO: replace neg_rule with neg_pred (predicates instead of full-blown rules)?
          */
         butNot: function(sub_rule, neg_rule, options) {
             // Are both rules single-char rules ?
@@ -394,6 +400,19 @@ define( function() {
             return finalizeRule( function(reader) { return _string.call(this, reader, char_pred, elem_pred); }, options );
         },
         
+        //--- Miscellaneous ---------------------------------------------------
+        
+        /** Inverts a predicate.
+         */
+        not: function(pred) {
+            if (typeof pred === 'string' && pred.length === 1)
+                return singleCharPredicate(pred, true); //makeAnyCharRule(pred, true, options)
+            else if (typeof pred === 'function' && pred.rule_name === undefined)
+                return invertPredicate(pred);
+            else
+                throw 'Parser: not() called with non-supported "char_" argument: ' + char_;
+        },
+
         finalizeGrammar: function(g) {
             for (var name in g) {
                 g[name].rule_name = name;

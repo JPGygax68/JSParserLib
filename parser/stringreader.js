@@ -29,9 +29,10 @@ define(["./charclasses"], function(CharClasses) {
 	}
 	
 	SourceReader.prototype.restorePos = function() {
+        //console.log('restorePos');
         var pos = this.marks.pop();
         if (pos.i !== this.i) {
-            if (pos.i < (this.i - 1) ) console.log('goToPos() from ' + this.i + ' to ' + pos.i + ': ' + this.text.substr(pos.i, this.i - pos.i) );
+            if (pos.i < this.i ) console.log('goToPos() from ' + this.i + ' to ' + pos.i + ': ' + this.text.substr(pos.i, this.i - pos.i) );
             this.goToPos(pos);
         }
 	}
@@ -40,14 +41,22 @@ define(["./charclasses"], function(CharClasses) {
 		this.marks.pop();
 	}
 	
-    SourceReader.prototype.peekNextChar = function () {
+    SourceReader.prototype.currentElement = function () {
         if (this.i >= this.text.length)
             return null;
         return this.text[this.i];
     }
+    
+    /*
+    SourceReader.prototype.peekNextElement = function() {
+        if (this.i >= (this.text.length-1))
+            return null;
+        return this.text[this.i+1];
+    }
+    */
 
-    SourceReader.prototype.consumeNextChar = function() {
-        var c = this.peekNextChar();
+    SourceReader.prototype.consumeCurrentElement = function() {
+        var c = this.currentElement();
         if (c) {
             if (c === '\n') {
                 this.row++; this.col = 0;
@@ -66,9 +75,9 @@ define(["./charclasses"], function(CharClasses) {
     SourceReader.prototype.skipWhitespace = function() {
         var found = false;
         var c;
-        while ((c = this.peekNextChar())) {
+        while ((c = this.currentElement())) {
             if (!CharClasses.isWhitespace(c)) break;
-            this.consumeNextChar();
+            this.consumeCurrentElement();
             found = true;
         }
         return found;

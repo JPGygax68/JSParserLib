@@ -42,7 +42,7 @@ string";
         urlArgs: "bust=" +  (new Date()).getTime()
         //urlArgs: "bust=15"
       } );
-      require(['./parser/reader', './parser/parser', './parser/javascript'], function(Reader, Parser, JS) {
+      require(['./parser/stringreader', './parser/parser', './parser/javascript'], function(Reader, Parser, JS) {
         var source = $('#js_source').text();
         var reader = Reader.createReader(source);
         var parser = Parser.createParser(reader, JS.inputElement2);

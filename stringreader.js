@@ -1,18 +1,41 @@
 define(["./charclasses"], function(CharClasses) {
 
+    /*--- Internal routines -------------------------------------------------*/
+    
+    function trimSource(source) {
+        var lines = source.split('\n');
+        while (lines.length > 0 && lines[0].trim() === '') lines.shift();
+        while (lines.length > 0 && lines[lines.length-1].trim() === '') lines.pop();
+        
+        var min_indent = 9999;
+        lines.forEach( function(line, i) {
+            var indent = 0;
+            for (var i = 0; i < line.length && " \t".indexOf(line[i]) >= 0; i ++) {
+                if (line[i] === '\t') indent = (indent + this.tab_width) - ((indent + this.tab_width) % this.tab_width);
+                else if (line[i] === ' ') indent += 1;
+            }
+            if (indent < min_indent) min_indent = indent;
+        });
+        
+        source = ''; var that = this;
+        lines.forEach( function(line, i) { source += line.substr(min_indent) + '\n'; });
+        
+        return source;
+    }
+    
 	//--- SourceReader class ------------------------------------------------*/
 	
 	/** Constructor
 	 */
 	function SourceReader(text) {
-		this.text = text;
+		this.text = trimSource(text);
 		this.marks = undefined;
 		this.tab_width = 4; // TODO: configurable
 		this.i = 0; // TODO: wrap in getter method
 		this.row = 0;
 		this.col = 0;
 		this.indent = 0;
-	}
+    }
 	
     SourceReader.prototype.getCurrentPos = function() {
         return { i: this.i, row: this.row, col: this.col };
@@ -32,7 +55,7 @@ define(["./charclasses"], function(CharClasses) {
         //console.log('restorePos');
         var pos = this.marks.pop();
         if (pos.i !== this.i) {
-            if (pos.i < this.i ) console.log('_goToPos() from ' + this.i + ' to ' + pos.i + ': ' + this.text.substr(pos.i, this.i - pos.i) );
+            //if (pos.i < this.i ) console.log('_goToPos() from ' + this.i + ' to ' + pos.i + ': ' + this.text.substr(pos.i, this.i - pos.i) );
             this._goToPos(pos);
         }
 	}
@@ -91,4 +114,3 @@ define(["./charclasses"], function(CharClasses) {
 		createReader: function(text) { return new SourceReader(text); }
 	}
 });
-	

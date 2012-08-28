@@ -56,7 +56,6 @@ string";
         var parser = Parser.createParser(reader, JS.inputElementRegExp);
         var elem;
         var i = 0;
-        console.log('Starting to parse...');
         var $cont = $('<pre>').addClass('code').addClass('javascript');
         var last_type = '', $last_node;
         while ((elem = parser.getNextElement()) !== false) {

@@ -208,7 +208,7 @@ define( function() {
     function allSingleCharRules(rules) { return rules.every( isSingleCharRule ); }
     
     function mergeSingleCharRules(sub_rules, options) {
-        console.log('all single char rules!');
+        //console.log('all single char rules!');
         var rule = function(reader) {
             var c = reader.currentElement();
             for (var i = 0; i < sub_rules.length; i ++) {

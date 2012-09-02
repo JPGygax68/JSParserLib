@@ -10,6 +10,9 @@ define(["./parser"], function(P) {
         return s;
     })();
     PUNCTUATORS = PUNCTUATORS.split(' ');
+
+    var DIV_PUNCTUATORS = ['/', '/='];
+    var DIV_PUNCT_CHARS = '/=';
                 
     var WHITESPACE_CHARS = '\u0009\u000B\u000C \u00A0\uFEFF\u1680\u180E\u2000\u2001\u2002\u2003\u2004'
                           +'\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF';
@@ -60,6 +63,11 @@ define(["./parser"], function(P) {
     g.punctuator = P.string( 
         function(c) { return PUNCT_CHARS.indexOf(c) >= 0; }, 
         function(text) { return PUNCTUATORS.indexOf(text) >= 0; }
+    );
+
+    g.divPunctuator = P.string( 
+        function(c) { return DIV_PUNCT_CHARS.indexOf(c) >= 0; }, 
+        function(text) { return DIV_PUNCTUATORS.indexOf(text) >= 0; }
     );
 
     g.decimalDigits = P.repetition(
@@ -238,8 +246,7 @@ define(["./parser"], function(P) {
         g.identifierName,
         g.punctuator,
         g.numericLiteral,
-        g.stringLiteral,
-        
+        g.stringLiteral
     ]);
     
     g.inputElementDiv = P.anyOf([
@@ -247,7 +254,8 @@ define(["./parser"], function(P) {
         g.lineTerminator,
         g.comment,
         g.token,
-        g.punctuator
+        g.punctuator,
+        g.divPunctuator
     ]);
     
     g.inputElementRegExp = P.anyOf([
@@ -256,6 +264,21 @@ define(["./parser"], function(P) {
         g.comment,
         g.token,
         g.regularExpressionLiteral
+    ]);
+    
+    /*  The following is a CHEAT - use with extreme caution!
+     *  Without syntactical context, there are situations where it is impossible
+     *  to decide whether a sequence of characters beginning with a '/' is a division
+     *  or a regular expression literal!
+     */
+    g.inputElement = P.anyOf([
+        g.whiteSpace,
+        g.lineTerminator,
+        g.comment,
+        g.token,
+        g.punctuator,
+        g.regularExpressionLiteral,
+        g.divPunctuator
     ]);
     
     return P.finalizeGrammar(g); // return the grammar

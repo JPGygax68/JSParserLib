@@ -15,7 +15,7 @@ define(['./stringreader', './parser', './javascript'], function(Reader, Parser, 
     
     return function(source) {
         var reader = Reader.createReader(source);
-        var parser = Parser.createParser(reader, JS.inputElementRegExp);
+        var parser = Parser.createParser(reader, JS.inputElement);
         var elem;
         var i = 0;
         var $cont = $('<pre>').addClass('code').addClass('javascript');
